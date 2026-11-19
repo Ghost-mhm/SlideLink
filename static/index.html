@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14151c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>SlideLink</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icon-192.png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <div id="conn" class="conn">Connecting…</div>
+  <script>
+    // A crash would otherwise leave a black screen: report it to the PC log and show it here.
+    (function () {
+      var n = 0;
+      function report(msg) {
+        if (n++ > 5) return;
+        try { fetch('/api/clientlog', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ msg: location.pathname + ' | ' + navigator.userAgent.slice(0, 80) + ' | ' + msg }) }); } catch (e) {}
+        var c = document.getElementById('conn');
+        if (c) { c.textContent = 'Error: ' + msg.slice(0, 120); c.classList.remove('ok'); }
+      }
+      window.addEventListener('error', function (e) {
+        report((e.message || (e.target && e.target.src ? 'could not load ' + e.target.src : 'error')) +
+          (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : ''));
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) { report('promise: ' + (e.reason && e.reason.message || e.reason)); });
+    })();
+  </script>
+  <script src="/qr.js"></script>
+  <script src="/hslide.js"></script>
+  <script src="/library.js"></script>
+  <script src="/remote.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

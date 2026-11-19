@@ -1,0 +1,24 @@
+# secrets: the Android signing key must never be published
+*.keystore
+*.jks
+
+# local data (linked devices, presentations)
+devices.json
+*.migrated
+data/
+
+# build tools and outputs
+android-sdk/
+android/build/
+android/*.apk
+android/*.idsig
+setup/build/
+dist/
+static/SlideLink.apk
+static/app-version.json
+
+# misc
+__pycache__/
+*.pyc
+.claude/
+*.log

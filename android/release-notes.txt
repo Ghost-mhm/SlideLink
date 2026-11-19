@@ -1,0 +1,1 @@
+Learns your PC's addresses by itself (nothing built in). First start asks for the PC address.
