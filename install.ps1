@@ -49,6 +49,13 @@ if ($Startup -or (Test-Path $startupLnk)) {
   $s.Arguments = "`"$dest\SlideLink.pyw`" --background"; $s.WorkingDirectory = $dest
   $s.IconLocation = "$dest\static\icon.ico,0"; $s.Save()
 }
+# An update replaces icon.ico: tell Windows to drop its cached copy, otherwise shortcuts can show a blank icon
+try {
+  (Get-Item "$dest\static\icon.ico").LastWriteTime = Get-Date
+  Start-Process ie4uinit.exe -ArgumentList '-show' -WindowStyle Hidden -Wait -ErrorAction Stop
+  Add-Type -Namespace SlideLinkSetup -Name Shell -MemberDefinition '[DllImport("shell32.dll")] public static extern void SHChangeNotify(int e, uint f, IntPtr a, IntPtr b);'
+  [SlideLinkSetup.Shell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)   # SHCNE_ASSOCCHANGED
+} catch { }
 
 # Settings > Apps entry (per user), so SlideLink can be uninstalled like any other app
 $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\SlideLink'
