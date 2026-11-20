@@ -1,4 +1,4 @@
-﻿# SlideLink · EN: Installs SlideLink for the current user (files, shortcuts, Settings > Apps entry). Options: -Python -NoDesktop -Startup -NoLaunch -Version.
+# SlideLink · EN: Installs SlideLink for the current user (files, shortcuts, Settings > Apps entry). Options: -Python -NoDesktop -Startup -NoLaunch -Version.
 # SlideLink · DE: Installiert SlideLink für den aktuellen Benutzer (Dateien, Verknüpfungen, Eintrag unter Einstellungen > Apps). Optionen: -Python -NoDesktop -Startup -NoLaunch -Version.
 # SlideLink installer (per user, no admin rights needed).
 # Copies the app to %LOCALAPPDATA%\Programs\SlideLink and adds Start menu + desktop shortcuts.
@@ -20,7 +20,7 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" -ErrorAction Silently
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
-$files = 'server.py','mcp_server.py','SlideLink.pyw','import_claude_deck.py','make_icon.ps1','pdf_pages.ps1','save_doc.py','save_deck.py','README.md','uninstall.ps1'
+$files = 'server.py','mcp_server.py','SlideLink.pyw','import_claude_deck.py','make_icon.ps1','pdf_pages.ps1','save_doc.py','save_deck.py','updater.py','README.md','uninstall.ps1'
 foreach ($f in $files) { if (Test-Path (Join-Path $src $f)) { Copy-Item (Join-Path $src $f) $dest -Force } }
 Copy-Item (Join-Path $src 'static') $dest -Recurse -Force
 Copy-Item (Join-Path $src 'chrome-extension') $dest -Recurse -Force

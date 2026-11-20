@@ -1,4 +1,4 @@
-﻿# SlideLink · EN: Builds dist/SlideLink-Setup.exe from the current app files with the C# compiler built into Windows.
+# SlideLink · EN: Builds dist/SlideLink-Setup.exe from the current app files with the C# compiler built into Windows.
 # SlideLink · DE: Baut dist/SlideLink-Setup.exe aus den aktuellen App-Dateien mit dem in Windows enthaltenen C#-Compiler.
 # Builds dist\SlideLink-Setup.exe from the current app files (uses the C# compiler that comes with Windows).
 $ErrorActionPreference = 'Stop'
@@ -7,7 +7,7 @@ $out = Join-Path $PSScriptRoot 'build'
 Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$out\payload", "$root\dist" | Out-Null
 $files = 'server.py','mcp_server.py','SlideLink.pyw','import_claude_deck.py','make_icon.ps1','pdf_pages.ps1',
-         'save_doc.py','save_deck.py','README.md','install.ps1','uninstall.ps1'
+         'save_doc.py','save_deck.py','updater.py','README.md','install.ps1','uninstall.ps1'
 foreach ($f in $files) { Copy-Item (Join-Path $root $f) "$out\payload\" }
 Copy-Item (Join-Path $root 'static'), (Join-Path $root 'chrome-extension') "$out\payload\" -Recurse
 Add-Type -AssemblyName System.IO.Compression.FileSystem
