@@ -100,7 +100,7 @@ erlaubt) sowie für PC/Editor: `add_slide`, `update_slide`, `delete_slide`, `dup
 `next`/`prev` senden `from_index`/`from_step` mit; ist die Präsentation inzwischen weiter, antwortet der Server *stale*,
 damit schnelles Tippen auf mehreren Geräten nie versehentlich Folien überspringt.
 
-### Beta-Endpunkte
+### Endpunkte für Publikum, Umfragen und Gruppe (1.1.0)
 | | |
 |---|---|
 | `GET /live?k=…` | Publikumsseite (kein Gerät nötig; der Schlüssel ist die Eintrittskarte) |

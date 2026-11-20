@@ -99,7 +99,7 @@ phones), and for the PC/editor: `add_slide`, `update_slide`, `delete_slide`, `du
 `next`/`prev` carry `from_index`/`from_step`; if the presentation moved on meanwhile the server answers *stale*, so
 fast taps from several devices never skip slides by accident.
 
-### Beta endpoints
+### Audience, polls and group endpoints (1.1.0)
 | | |
 |---|---|
 | `GET /live?k=…` | Audience page (no device needed; the key is the ticket) |

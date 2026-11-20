@@ -396,11 +396,11 @@ function showGroupEnded() {
 // DE: Admin-Steuerung der Gruppen-Sitzung (PC-Popup und Admin-Handy): starten, QR, Mitglieder, beenden.
 function groupAdminHTML() {
   const g = (S && S.group) || {};
-  if (!g.active) return `<h4>🎤 Present in group <small class="beta">BETA</small></h4>
+  if (!g.active) return `<h4>🎤 Present in group</h4>
     <p class="muted">Co-presenters join with a QR code, in the browser or the app. They control the talk only and are disconnected when the session ends.</p>
     <button class="primary" data-grp="start" style="width:100%">Start group session</button>`;
   const left = Math.max(0, Math.round((g.expires - nowSec()) / 60));
-  return `<h4>🎤 Group session <small class="beta">BETA</small></h4>
+  return `<h4>🎤 Group session</h4>
     <p class="muted">${g.members.length} joined · ends by itself in ${Math.floor(left / 60)}h ${left % 60}min</p>
     <div class="grp-members">${g.members.map(m => `<div class="grp-m"><span class="${m.online ? 'on-dot' : 'off-dot'}"></span>${esc(m.name)}
       <button class="link danger" data-grp="kick" data-id="${esc(m.id)}">remove</button></div>`).join('') || '<p class="muted">Nobody yet.</p>'}</div>
@@ -460,7 +460,7 @@ function openAudience() {
   const back = document.createElement('div');
   back.className = 'modal-back';
   const draw = () => `<div class="modal qr-modal">
-    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">👥 Group & audience <small class="beta">BETA</small></h3>
+    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">👥 Group & audience</h3>
       <button class="close" data-x style="flex:none" aria-label="Close">✕</button></div>
     <div class="lv-sec grp-sec" id="pcGroup">${groupAdminHTML()}</div>
     <h4 style="margin:6px 0 0;text-align:left">👥 Audience link</h4>
