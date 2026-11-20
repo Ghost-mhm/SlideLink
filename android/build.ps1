@@ -1,3 +1,5 @@
+﻿# SlideLink · EN: Builds and signs SlideLink.apk without Gradle and publishes it for in-app updates.
+# SlideLink · DE: Baut und signiert SlideLink.apk ohne Gradle und stellt sie für Updates in der App bereit.
 # Builds SlideLink.apk (Android remote) without Gradle: aapt2 -> javac -> d8 -> zipalign -> apksigner.
 param([string]$Sdk = (Join-Path (Split-Path $PSScriptRoot) 'android-sdk'))
 $ErrorActionPreference = 'Continue'   # native tools print notes on stderr; exit codes are checked instead

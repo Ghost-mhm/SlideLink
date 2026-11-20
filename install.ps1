@@ -1,4 +1,6 @@
-﻿# SlideLink installer (per user, no admin rights needed).
+﻿# SlideLink · EN: Installs SlideLink for the current user (files, shortcuts, Settings > Apps entry). Options: -Python -NoDesktop -Startup -NoLaunch -Version.
+# SlideLink · DE: Installiert SlideLink für den aktuellen Benutzer (Dateien, Verknüpfungen, Eintrag unter Einstellungen > Apps). Optionen: -Python -NoDesktop -Startup -NoLaunch -Version.
+# SlideLink installer (per user, no admin rights needed).
 # Copies the app to %LOCALAPPDATA%\Programs\SlideLink and adds Start menu + desktop shortcuts.
 # Your presentations and linked devices live in %LOCALAPPDATA%\SlideLink\data and are never touched.
 # Options (used by SlideLink-Setup.exe): -Python <python.exe> -NoDesktop -Startup -NoLaunch -Version <x.y>

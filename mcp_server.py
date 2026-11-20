@@ -1,3 +1,5 @@
+# SlideLink · EN: MCP server: lets Claude list, build, edit and control SlideLink presentations (JSON-RPC over stdio).
+# SlideLink · DE: MCP-Server: Claude kann SlideLink-Präsentationen auflisten, erstellen, bearbeiten und steuern (JSON-RPC über stdio).
 """SlideLink MCP server - lets Claude build and control presentations live.
 
 Claude Code / Claude Desktop start this over stdio. It talks to the running
@@ -80,6 +82,8 @@ TOOLS = [
 ]
 
 
+# EN: Calls the SlideLink server's HTTP API.
+# DE: Ruft die HTTP-API des SlideLink-Servers auf.
 def http(method, path, body=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(BASE + path, data=data, method=method,
@@ -94,6 +98,8 @@ def http(method, path, body=None):
                            "Start it with: python server.py")
 
 
+# EN: Runs one SlideLink operation (as 'claude').
+# DE: Führt eine SlideLink-Operation aus (als 'claude').
 def op(**kw):
     kw["by"] = "claude"
     res = http("POST", "/api/op", kw)
@@ -102,6 +108,8 @@ def op(**kw):
     return res.get("result", {})
 
 
+# EN: Short readable description of a presentation for Claude.
+# DE: Kurze lesbare Beschreibung einer Präsentation für Claude.
 def describe(state):
     d = state["deck"]
     p = state["present"]
@@ -120,6 +128,8 @@ def describe(state):
     return "\n".join(lines)
 
 
+# EN: Executes one MCP tool call.
+# DE: Führt einen MCP-Werkzeugaufruf aus.
 def call_tool(name, a):
     if name == "list_presentations":
         lib = http("GET", "/api/library")
@@ -160,11 +170,15 @@ def call_tool(name, a):
     raise RuntimeError(f"Unknown tool {name}")
 
 
+# EN: Writes one JSON-RPC message to stdout.
+# DE: Schreibt eine JSON-RPC-Nachricht nach stdout.
 def send(msg):
     sys.stdout.buffer.write((json.dumps(msg, ensure_ascii=False) + "\n").encode("utf-8"))
     sys.stdout.buffer.flush()
 
 
+# EN: Answers one JSON-RPC request (initialize, tools/list, tools/call).
+# DE: Beantwortet eine JSON-RPC-Anfrage (initialize, tools/list, tools/call).
 def handle(msg):
     method, mid = msg.get("method"), msg.get("id")
     if mid is None:
@@ -193,6 +207,8 @@ def handle(msg):
     send({"jsonrpc": "2.0", "id": mid, "result": result})
 
 
+# EN: Reads JSON-RPC requests from stdin until it closes.
+# DE: Liest JSON-RPC-Anfragen von stdin, bis es geschlossen wird.
 def main():
     for line in sys.stdin.buffer:
         line = line.strip()

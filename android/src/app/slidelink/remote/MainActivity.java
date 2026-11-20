@@ -1,3 +1,5 @@
+// SlideLink · EN: SlideLink Android app: native shell around the phone remote (finding the PC, login, keys, screen, updates).
+// SlideLink · DE: SlideLink-Android-App: native Hülle um die Handy-Fernbedienung (PC finden, Anmeldung, Tasten, Bildschirm, Updates).
 package app.slidelink.remote;
 
 import android.app.Activity;
@@ -45,6 +47,8 @@ import java.util.List;
  * (a clear "PC not reachable" screen that keeps retrying), keeps the screen on and maps the volume keys
  * to Next / Back.
  */
+// EN: The only screen of the app: WebView with the remote plus a native offline screen.
+// DE: Der einzige Bildschirm der App: WebView mit der Fernbedienung plus nativer Offline-Bildschirm.
 public class MainActivity extends Activity {
     private static final int BG = Color.BLACK;          // true black: OLED pixels off (battery)
     private static final long DIM_AFTER_MS = 20_000;     // no touch for 20 s while presenting: dim the screen
@@ -66,11 +70,15 @@ public class MainActivity extends Activity {
     private ConnectivityManager.NetworkCallback netCallback;
 
     /** Network changed (Wi-Fi on/off, other Wi-Fi, mobile data): look again which way to the PC is best. */
+    // EN: Looks again for the best way to the PC after a short delay (network changed).
+    // DE: Sucht nach kurzer Pause erneut den besten Weg zum PC (Netz hat sich geändert).
     private void scheduleRecheck(long delayMs) {
         ui.removeCallbacks(recheck);
         ui.postDelayed(recheck, delayMs);
     }
 
+    // EN: True if the phone is on Wi-Fi (or Ethernet) right now.
+    // DE: True, wenn das Handy gerade im WLAN (oder per Ethernet) ist.
     private boolean onWifi() {
         try {
             ConnectivityManager cm = getSystemService(ConnectivityManager.class);
@@ -83,6 +91,8 @@ public class MainActivity extends Activity {
     private Updater updater;
 
     /** Used by the SlideLink page (⚙ panel): app version + "Check for updates". */
+    // EN: JavaScript bridge (window.SlideLinkApp): the page and the app exchange version, login, addresses and state.
+    // DE: JavaScript-Brücke (window.SlideLinkApp): Seite und App tauschen Version, Anmeldung, Adressen und Zustand aus.
     final class Bridge {
         @JavascriptInterface public String version() { return Updater.installedName(MainActivity.this); }
         @JavascriptInterface public void checkUpdate() { ui.post(() -> updater.check(base, true)); }
@@ -108,6 +118,8 @@ public class MainActivity extends Activity {
         }
     }
 
+    // EN: Builds the screen, sets up the WebView and starts looking for the PC; watches network changes.
+    // DE: Baut den Bildschirm, richtet die WebView ein und sucht den PC; beobachtet Netzwechsel.
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -144,11 +156,15 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient());
         web.addJavascriptInterface(new Bridge(), "SlideLinkApp");
         web.setWebViewClient(new WebViewClient() {
+            // EN: The page could not load: show the offline screen.
+            // DE: Die Seite konnte nicht laden: Offline-Bildschirm zeigen.
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (req.isForMainFrame()) showOffline("Can’t reach SlideLink on your PC.");
             }
 
+            // EN: Keeps navigation inside SlideLink (other links are not opened in the app).
+            // DE: Hält die Navigation innerhalb von SlideLink (andere Links öffnen sich nicht in der App).
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 return base == null || !req.getUrl().toString().startsWith(base);   // stay inside SlideLink
@@ -171,6 +187,8 @@ public class MainActivity extends Activity {
 
     // ---------- finding the PC ----------
 
+    // EN: Addresses to try, in order: home Wi-Fi first when on Wi-Fi, then HTTPS, then the rest.
+    // DE: Adressen zum Ausprobieren, der Reihe nach: im WLAN zuerst Heim-WLAN, dann HTTPS, dann der Rest.
     private List<String> candidates() {
         List<String> list = new ArrayList<>();
         // same Wi-Fi as the PC? then the direct Wi-Fi way first (fast, works without internet)
@@ -189,6 +207,8 @@ public class MainActivity extends Activity {
         return list;
     }
 
+    // EN: Tries the addresses one by one and opens the first that answers; asks on the very first start.
+    // DE: Probiert die Adressen nacheinander und öffnet die erste, die antwortet; fragt beim allerersten Start.
     private void findPc() {
         if (searching) return;
         searching = true;
@@ -221,6 +241,8 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    // EN: True if SlideLink answers at this address within the timeout.
+    // DE: True, wenn SlideLink an dieser Adresse innerhalb des Zeitlimits antwortet.
     private static boolean reachable(String address, int timeoutMs) {
         HttpURLConnection c = null;
         try {
@@ -235,6 +257,8 @@ public class MainActivity extends Activity {
         }
     }
 
+    // EN: Opens the remote at an address (hands over the login cookie first).
+    // DE: Öffnet die Fernbedienung an einer Adresse (übergibt vorher das Anmelde-Cookie).
     private void open(String address) {
         if (address.equals(base) && web.getVisibility() == View.VISIBLE) return;   // already on the best way
         base = address;
@@ -252,6 +276,8 @@ public class MainActivity extends Activity {
         updater.autoCheck(address);          // a newer app version on the PC? ask to update
     }
 
+    // EN: Shows the 'PC not reachable' screen and retries every 5 seconds.
+    // DE: Zeigt den Bildschirm 'PC nicht erreichbar' und versucht es alle 5 Sekunden erneut.
     private void showOffline(String why) {
         web.setVisibility(View.INVISIBLE);
         offline.setVisibility(View.VISIBLE);
@@ -263,6 +289,8 @@ public class MainActivity extends Activity {
 
     // ---------- the "not reachable" screen ----------
 
+    // EN: Creates the offline screen (title, spinner, text, Try again, Change PC address).
+    // DE: Erstellt den Offline-Bildschirm (Titel, Ladeanzeige, Text, Erneut versuchen, PC-Adresse ändern).
     private View buildOffline() {
         offline = new LinearLayout(this);
         offline.setOrientation(LinearLayout.VERTICAL);
@@ -306,6 +334,8 @@ public class MainActivity extends Activity {
         return offline;
     }
 
+    // EN: A rounded button in SlideLink style.
+    // DE: Ein abgerundeter Knopf im SlideLink-Stil.
     private Button button(String text, boolean primary) {
         Button b = new Button(this);
         b.setText(text);
@@ -319,6 +349,8 @@ public class MainActivity extends Activity {
         return b;
     }
 
+    // EN: Dialog to enter the PC address by hand.
+    // DE: Dialog, um die PC-Adresse von Hand einzugeben.
     private void askAddress() {
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
@@ -340,6 +372,8 @@ public class MainActivity extends Activity {
 
     // ---------- keys, lifecycle ----------
 
+    // EN: Screen stays on only while presenting.
+    // DE: Bildschirm bleibt nur beim Präsentieren an.
     private void applyPresenting(boolean on) {
         presenting = on;
         if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -348,12 +382,16 @@ public class MainActivity extends Activity {
     }
 
     /** Any touch or key: full brightness again, and dim again after 20 s without touching (only while presenting). */
+    // EN: Any touch or key: full brightness; dim again after 20 s without touching while presenting.
+    // DE: Jede Berührung oder Taste: volle Helligkeit; beim Präsentieren nach 20 s ohne Berührung wieder dimmen.
     private void wake() {
         ui.removeCallbacks(dim);
         if (dimmed) setBrightness(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE, false);
         if (presenting) ui.postDelayed(dim, DIM_AFTER_MS);
     }
 
+    // EN: Sets this window's screen brightness (or back to the system value).
+    // DE: Setzt die Bildschirmhelligkeit dieses Fensters (oder zurück auf den Systemwert).
     private void setBrightness(float value, boolean isDim) {
         WindowManager.LayoutParams lp = getWindow().getAttributes();
         lp.screenBrightness = value;
@@ -361,12 +399,16 @@ public class MainActivity extends Activity {
         dimmed = isDim;
     }
 
+    // EN: Every touch wakes the screen.
+    // DE: Jede Berührung weckt den Bildschirm.
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN) wake();
         return super.dispatchTouchEvent(ev);
     }
 
+    // EN: Volume + = Next, volume - = Back (the volume does not change).
+    // DE: Lauter = Weiter, Leiser = Zurück (die Lautstärke ändert sich nicht).
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getAction() == KeyEvent.ACTION_DOWN) wake();
@@ -381,12 +423,16 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
+    // EN: Back key: back in the page if possible, else leave the app.
+    // DE: Zurück-Taste: wenn möglich zurück in der Seite, sonst App verlassen.
     @Override
     public void onBackPressed() {
         if (web.getVisibility() == View.VISIBLE && web.canGoBack()) web.goBack();
         else super.onBackPressed();
     }
 
+    // EN: App visible again: resume the page and check for updates.
+    // DE: App wieder sichtbar: Seite fortsetzen und nach Updates sehen.
     @Override
     protected void onResume() {
         super.onResume();
@@ -395,6 +441,8 @@ public class MainActivity extends Activity {
         if (base != null) updater.autoCheck(base);
     }
 
+    // EN: App in the background: pause everything (battery).
+    // DE: App im Hintergrund: alles pausieren (Akku).
     @Override
     protected void onPause() {
         web.onPause();
@@ -402,6 +450,8 @@ public class MainActivity extends Activity {
         super.onPause();
     }
 
+    // EN: Cleans up the WebView and the network watcher.
+    // DE: Räumt WebView und Netzwerk-Beobachter auf.
     @Override
     protected void onDestroy() {
         ui.removeCallbacksAndMessages(null);
@@ -411,6 +461,8 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    // EN: Converts dp to pixels.
+    // DE: Rechnet dp in Pixel um.
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
     }

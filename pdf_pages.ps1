@@ -1,3 +1,5 @@
+﻿# SlideLink · EN: Renders each PDF page to a PNG with Windows' built-in PDF engine (Windows.Data.Pdf).
+# SlideLink · DE: Rendert jede PDF-Seite als PNG mit der in Windows eingebauten PDF-Engine (Windows.Data.Pdf).
 # Renders every page of a PDF to page-001.png, page-002.png, ... with Windows' built-in PDF engine (Windows.Data.Pdf).
 # Usage: powershell -File pdf_pages.ps1 <file.pdf> <output folder> [width in px]
 param([Parameter(Mandatory)][string]$Pdf, [Parameter(Mandatory)][string]$Out, [int]$Width = 1600)

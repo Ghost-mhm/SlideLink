@@ -1,3 +1,5 @@
+# SlideLink · EN: Writes a pulled claude.ai deck into the watched folder (used by the scheduled 'Pull from Claude' task).
+# SlideLink · DE: Schreibt ein von claude.ai geholtes Deck in den überwachten Ordner (für die geplante Aufgabe 'Pull from Claude').
 """Assemble a claude.ai Slides deck from saved files into ~/Claude Presentations (SlideLink syncs it).
 
 Usage (one JSON argument file):
@@ -23,6 +25,8 @@ STATE = os.path.join(DEST, ".pull-state.json")
 SAFE = re.compile(r"^(deck\.json|deck\.css|slides/[A-Za-z0-9_-]{1,64}\.html|assets/[A-Za-z0-9_./-]{1,120})$")
 
 
+# EN: Builds the deck folder next to the target and swaps it in at once; records the version.
+# DE: Baut den Deck-Ordner neben dem Ziel und tauscht ihn auf einmal aus; merkt sich die Version.
 def main(job_path):
     with open(job_path, encoding="utf-8") as f:
         job = json.load(f)

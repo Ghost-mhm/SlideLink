@@ -1,3 +1,5 @@
+// SlideLink · EN: Library (home screen on the PC): Presentations and Docs tabs, newest first, upload, folder status.
+// SlideLink · DE: Bibliothek (Startbildschirm am PC): Reiter Präsentationen und Docs, neueste zuerst, Upload, Ordnerstatus.
 'use strict';
 /* SlideLink library: every presentation in one place (home screen of the desktop app). */
 
@@ -10,8 +12,14 @@ let libTab = localStorage.getItem('sl-lib-tab') || 'deck';   // 'deck' = present
 
 /* ---- shared by the library and the phone: two explorers, newest first, grouped by day ---- */
 // Docs: Claude Docs and everything that has only one slide (single pages, HTML apps, pictures)
+// EN: Which tab an item belongs to: 'doc' for Claude Docs and anything with one slide, else 'deck'.
+// DE: Zu welchem Reiter ein Eintrag gehört: 'doc' für Claude Docs und alles mit einer Folie, sonst 'deck'.
 const deckKind = d => (d.kind === 'doc' || d.slide_count === 1 ? 'doc' : 'deck');
+// EN: Date used for sorting (claude.ai date, else created/updated).
+// DE: Datum für die Sortierung (claude.ai-Datum, sonst erstellt/geändert).
 const deckDate = d => d.date || d.created_at || d.updated_at || 0;
+// EN: Day heading: Today, Yesterday or the full date.
+// DE: Tagesüberschrift: Heute, Gestern oder das volle Datum.
 function dayLabel(t) {
   const d = new Date(t * 1000), today = new Date();
   const days = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
@@ -19,6 +27,8 @@ function dayLabel(t) {
   if (days === 1) return 'Yesterday';
   return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
+// EN: Sorts newest first and groups by day.
+// DE: Sortiert neueste zuerst und gruppiert nach Tagen.
 function groupByDay(list) {
   const out = [];
   [...list].sort((a, b) => deckDate(b) - deckDate(a)).forEach(d => {
@@ -28,6 +38,8 @@ function groupByDay(list) {
   });
   return out;
 }
+// EN: The two tabs with their counts.
+// DE: Die beiden Reiter mit ihren Anzahlen.
 function tabsHTML(decks, current, attr) {
   const n = k => decks.filter(d => deckKind(d) === k).length;
   return `<div class="lib-tabs" role="tablist">
@@ -35,8 +47,12 @@ function tabsHTML(decks, current, attr) {
     <button role="tab" ${attr}="doc" class="${current === 'doc' ? 'on' : ''}">📄 Docs <small>${n('doc')}</small></button>
   </div>`;
 }
+// EN: 'Document' or 'n slides'.
+// DE: 'Document' oder 'n slides'.
 const countLabel = d => deckKind(d) === 'doc' ? 'Document' : plural(d.slide_count);
 
+// EN: Loads the list of all presentations.
+// DE: Lädt die Liste aller Präsentationen.
 async function loadLibrary() {
   if (libLoading) return libLoading;
   libLoading = fetch('/api/library', { headers: authHeaders(), cache: 'no-store' })
@@ -46,6 +62,8 @@ async function loadLibrary() {
     .finally(() => { libLoading = null; });
   return libLoading;
 }
+// EN: Loads one complete deck (cached).
+// DE: Lädt ein vollständiges Deck (zwischengespeichert).
 async function loadDeck(id) {
   const summ = LIB && LIB.decks.find(d => d.id === id);
   const c = deckCache[id];
@@ -55,6 +73,8 @@ async function loadDeck(id) {
   return d;
 }
 
+// EN: Builds the library screen.
+// DE: Baut den Bibliotheksbildschirm.
 function initLibrary() {
   document.title = 'SlideLink';
   $('#app').innerHTML = `
@@ -124,6 +144,8 @@ function initLibrary() {
 
 /* Upload: PowerPoint (converted by PowerPoint on the PC), claude.ai deck .zip, HTML deck, SlideLink .json,
    images (several images become one presentation). Also works by dragging files onto the window. */
+// EN: Uploads files (PowerPoint, zip, html, json, pictures), also by drag and drop.
+// DE: Lädt Dateien hoch (PowerPoint, zip, html, json, Bilder), auch per Drag-and-drop.
 async function uploadFiles(fileList) {
   const files = [...fileList];
   if (!files.length) return;
@@ -151,6 +173,8 @@ async function uploadFiles(fileList) {
   if (last) selectDeck(last);
 }
 
+// EN: Shows one presentation (or the overview with null).
+// DE: Zeigt eine Präsentation (oder mit null die Übersicht).
 function selectDeck(id) {
   libSel = id;
   sessionStorage.setItem('sl-lib-sel', id || '');
@@ -158,6 +182,8 @@ function selectDeck(id) {
   renderLibrary();
 }
 
+// EN: Buttons on a presentation: present, edit, remote, duplicate, delete.
+// DE: Knöpfe einer Präsentation: präsentieren, bearbeiten, Fernbedienung, duplizieren, löschen.
 async function onLibMainClick(e) {
   const card = e.target.closest('.lib-card');
   if (card) return selectDeck(card.dataset.id);
@@ -187,18 +213,28 @@ async function onLibMainClick(e) {
   }
 }
 
+// EN: Cover picture of a presentation (its first slide).
+// DE: Titelbild einer Präsentation (ihre erste Folie).
 function coverHTML(d) {
   return d.cover ? slideHTML(d.cover, d, 0) : `<div class="slide theme-${esc(d.theme)}"><div class="inner"><p class="s-empty">Empty</p></div></div>`;
 }
+// EN: Progress bar of the slide statuses.
+// DE: Fortschrittsbalken der Folienstatus.
 function statusBar(counts, total) {
   if (!total) return '';
   const col = { 'done': 'var(--done)', 'review': 'var(--review)', 'in-progress': 'var(--progress)', 'draft': 'var(--draft)' };
   return `<div class="progress-track">${['done', 'review', 'in-progress', 'draft'].map(k =>
     `<div style="width:${100 * (counts[k] || 0) / total}%;background:${col[k]}"></div>`).join('')}</div>`;
 }
+// EN: '1 slide' / 'n slides'.
+// DE: '1 slide' / 'n slides'.
 const plural = n => `${n} slide${n === 1 ? '' : 's'}`;
+// EN: 'From claude.ai' label.
+// DE: Kennzeichnung 'From claude.ai'.
 const sourceLabel = d => d.source && (d.source.kind === 'claude-slides' || d.source.kind === 'doc') ? '✦ From claude.ai' : '';
 
+// EN: Draws the list, the overview grid or the detail view.
+// DE: Zeichnet die Liste, das Übersichtsraster oder die Detailansicht.
 function renderLibrary() {
   if (MODE !== 'library' || !$('#libList')) return;
   renderClaudeBar();

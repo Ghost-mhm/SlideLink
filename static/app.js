@@ -1,3 +1,5 @@
+// SlideLink · EN: Core of the web UI: live connection, linking, devices, popups, editor, presenter and navigation.
+// SlideLink · DE: Kern der Web-Oberfläche: Live-Verbindung, Verknüpfen, Geräte, Popups, Editor, Präsentation und Navigation.
 'use strict';
 /* SlideLink client: library (/), editor (/edit), presenter (/present) and phone remote (/remote). */
 
@@ -23,6 +25,8 @@ if (window.SlideLinkApp && SlideLinkApp.getToken) {
   } catch (_) {}
 }
 // Android app: tell it the PC's current home-Wi-Fi addresses, so it can switch to Wi-Fi automatically at home
+// EN: Android app only: tells it the PC's current addresses (home Wi-Fi, HTTPS, Tailscale).
+// DE: Nur Android-App: teilt ihr die aktuellen Adressen des PCs mit (Heim-WLAN, HTTPS, Tailscale).
 function sendLanToApp() {
   if (!(window.SlideLinkApp && SlideLinkApp.setLanUrls)) return;
   fetch('/api/info', { headers: authHeaders() }).then(r => r.ok ? r.json() : null).then(j => {
@@ -34,6 +38,8 @@ function sendLanToApp() {
     }
   }).catch(() => {});
 }
+// EN: Header with the device token for API calls.
+// DE: Header mit dem Geräte-Token für API-Aufrufe.
 const authHeaders = () => (localStorage.getItem(TOKEN_KEY) ? { 'X-SlideLink-Token': localStorage.getItem(TOKEN_KEY) } : {});
 const $ = (s, r = document) => r.querySelector(s);
 
@@ -41,6 +47,8 @@ const STATUS = { 'draft': 'Draft', 'in-progress': 'In progress', 'review': 'Revi
 const LAYOUTS = { 'title': 'Title slide', 'content': 'Title + content', 'section': 'Section header',
   'two-column': 'Two columns', 'quote': 'Quote', 'image': 'Image', 'html': 'Designed slide (HTML)',
   'page': 'Interactive page (HTML app)', 'doc': 'Document (pages)' };
+// EN: Which field holds a slide's body: 'html' for designed slides, pages and docs, else 'content'.
+// DE: Welches Feld den Inhalt einer Folie hält: 'html' bei gestalteten Folien, Seiten und Docs, sonst 'content'.
 const bodyField = s => (s && (s.layout === 'html' || s.layout === 'page' || s.layout === 'doc') ? 'html' : 'content');
 const THEMES = { midnight: 'Midnight', paper: 'Paper', ocean: 'Ocean', sunset: 'Sunset' };
 
@@ -49,9 +57,13 @@ let skew = 0;          // server clock - local clock (seconds)
 let selectedId = sessionStorage.getItem('sl-sel');
 
 /* ---------------- helpers ---------------- */
+// EN: Escapes text for safe use in HTML.
+// DE: Maskiert Text für die sichere Verwendung in HTML.
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+// EN: Inline Markdown (bold, italic, code) to HTML.
+// DE: Inline-Markdown (fett, kursiv, Code) zu HTML.
 function inline(s) {
   return esc(s)
     .replace(/!\[([^\]]*)\]\(((?:https?:\/\/|\/)[^\s)]+)\)/g, '<img alt="$1" src="$2">')
@@ -59,6 +71,8 @@ function inline(s) {
     .replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>')
     .replace(/`([^`]+)`/g, '<code>$1</code>');
 }
+// EN: Simple Markdown (lists, paragraphs) to HTML for basic slides.
+// DE: Einfaches Markdown (Listen, Absätze) zu HTML für einfache Folien.
 function md(text) {
   let html = '', depth = 0;
   const close = to => { while (depth > to) { html += '</ul>'; depth--; } };
@@ -81,6 +95,8 @@ function md(text) {
   close(0);
   return `<div class="col">${html}</div>`;
 }
+// EN: HTML for one slide: designed slide or page in a frame, document view, or a basic layout.
+// DE: HTML für eine Folie: gestaltete Folie oder Seite im Frame, Dokumentansicht oder einfaches Layout.
 function slideHTML(s, deck, index, live) {
   if (typeof deck === 'string' || !deck) deck = { theme: deck || 'midnight' };
   if (s && s.layout === 'doc') return hsDocView(s);
@@ -91,9 +107,17 @@ function slideHTML(s, deck, index, live) {
     (s.title ? `<h1 class="s-title">${inline(s.title)}</h1>` : '') +
     `<div class="s-body">${md(s.content)}</div></div></div>`;
 }
+// EN: Sets innerHTML only if it changed (avoids flicker and reloading frames).
+// DE: Setzt innerHTML nur bei Änderungen (vermeidet Flackern und Neuladen von Frames).
 function setHTML(el, html) { if (el && el._h !== html) { el.innerHTML = html; el._h = html; hsObserve(el); } }
+// EN: Updates an input field only while the user is not typing in it.
+// DE: Aktualisiert ein Eingabefeld nur, solange der Benutzer nicht darin tippt.
 function setIfIdle(el, v) { if (el && document.activeElement !== el && el.value !== (v ?? '')) el.value = v ?? ''; }
+// EN: Current time in seconds, corrected to the server clock.
+// DE: Aktuelle Zeit in Sekunden, an die Server-Uhr angeglichen.
 const nowSec = () => Date.now() / 1000 + skew;
+// EN: Readable 'x minutes ago' text.
+// DE: Lesbarer Text wie 'vor x Minuten'.
 function ago(t) {
   const s = Math.max(0, Math.round(nowSec() - t));
   if (s < 5) return 'just now';
@@ -101,11 +125,15 @@ function ago(t) {
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
   return `${Math.floor(s / 3600)}h ago`;
 }
+// EN: Shows a short message in the status pill.
+// DE: Zeigt eine kurze Meldung in der Statusanzeige.
 function toast(msg) {
   const c = $('#conn');
   c.textContent = msg; c.classList.remove('ok');
   clearTimeout(toast.t); toast.t = setTimeout(() => S && c.classList.add('ok'), 3000);
 }
+// EN: POST JSON to the server; shows errors and the link screen if the device was unlinked.
+// DE: POST mit JSON an den Server; zeigt Fehler und den Verknüpfungsbildschirm, wenn das Gerät entfernt wurde.
 function post(path, body) {
   return fetch(path, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body),
@@ -116,12 +144,22 @@ function post(path, body) {
     return j;
   }).catch(e => { toast('Not connected: ' + e.message); return { ok: false }; });
 }
+// EN: Runs a SlideLink operation on the server.
+// DE: Führt eine SlideLink-Operation auf dem Server aus.
 const api = op => post('/api/op', { by: DEVICE, ...op, origin: CLIENT });
+// EN: Slides of the open deck.
+// DE: Folien des offenen Decks.
 const slides = () => (S ? S.deck.slides : []);
+// EN: True while Claude is working on the presentation.
+// DE: True, solange Claude an der Präsentation arbeitet.
 const claudeActive = () => S && S.claude.text && nowSec() - S.claude.at < 900;
+// EN: True if Claude is working on this slide right now.
+// DE: True, wenn Claude gerade an dieser Folie arbeitet.
 function claudeOn(s) {
   return (claudeActive() && S.claude.slide_id === s.id) || (s.updated_by === 'claude' && nowSec() - s.updated_at < 8);
 }
+// EN: Shows Claude's live status bar.
+// DE: Zeigt Claudes Live-Statusleiste.
 function renderClaudeBar() {
   const bar = $('#claudeBar');
   if (!bar) return;
@@ -136,6 +174,8 @@ function renderClaudeBar() {
 
 /* ---------------- live connection (never gives up) ---------------- */
 let es = null, lastBeat = 0, retryT = null, retryDelay = 1000, stopped = false;
+// EN: Opens the live connection (SSE); every message is the full state. Reconnects by itself.
+// DE: Öffnet die Live-Verbindung (SSE); jede Nachricht ist der ganze Zustand. Verbindet sich selbst neu.
 function connect() {
   if (stopped) return;
   clearTimeout(retryT);
@@ -183,6 +223,8 @@ function connect() {
     if (es.readyState === EventSource.CLOSED) scheduleReconnect(); // browser gave up (e.g. server down / 401)
   };
 }
+// EN: Tries to reconnect after a growing pause (max 8 s).
+// DE: Versucht nach einer wachsenden Pause (max. 8 s), neu zu verbinden.
 async function scheduleReconnect() {
   clearTimeout(retryT);
   retryT = setTimeout(async () => {
@@ -197,6 +239,8 @@ setInterval(() => { if (es && !stopped && Date.now() - lastBeat > 25000) connect
 document.addEventListener('visibilitychange', () => { if (!document.hidden && es && Date.now() - lastBeat > 12000) connect(); });
 window.addEventListener('online', () => es && connect());
 
+// EN: Asks the server whether this device is linked.
+// DE: Fragt den Server, ob dieses Gerät verknüpft ist.
 async function whoami() {
   try {
     const r = await fetch('/api/whoami', { headers: authHeaders(), cache: 'no-store' });
@@ -205,6 +249,8 @@ async function whoami() {
 }
 
 /* ---------------- one-time linking ---------------- */
+// EN: Shows the screen to link this device with the 6-digit code.
+// DE: Zeigt den Bildschirm zum Verknüpfen dieses Geräts mit dem 6-stelligen Code.
 function showLinkScreen(message) {
   stopped = true;
   if (es) es.close();
@@ -255,8 +301,14 @@ const ROLE_LABEL = { editor: 'editing', present: 'presenting', remote: 'remote c
 
 /* PC: a small popup when a linked phone has an older SlideLink app than the one ready on this PC.
    Not in the presenter (never on stage). "Later" hides it until the next new version. */
+// EN: Version text like '1.7' as a list of numbers.
+// DE: Versionstext wie '1.7' als Liste von Zahlen.
 const verNum = v => String(v || '').split('.').map(n => parseInt(n, 10) || 0);
+// EN: True if version a is older than version b.
+// DE: True, wenn Version a älter als Version b ist.
 const verOlder = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; };
+// EN: PC: popup when a linked phone has an older app than the newest one ready.
+// DE: PC: Popup, wenn ein verknüpftes Handy eine ältere App hat als die neueste bereitstehende.
 function checkPhoneUpdate() {
   if (KIND !== 'pc' || MODE === 'present' || !S || !S.app_latest || document.getElementById('phoneUpd')) return;
   const latest = S.app_latest.versionName;
@@ -275,6 +327,8 @@ function checkPhoneUpdate() {
 }
 
 /* "Linked devices" on the PC: with no phone connected, first offer the app download as a QR code. */
+// EN: PC 'Linked devices' button: with no phone online, first a QR code to download the app.
+// DE: PC-Knopf 'Linked devices': Ist kein Handy online, zuerst ein QR-Code zum Herunterladen der App.
 async function openConnect() {
   const online = (S && S.linked || []).filter(d => d.type !== 'host' && d.online);
   if (online.length) return openDevices();
@@ -307,6 +361,8 @@ async function openConnect() {
     }
   };
 }
+// EN: Opens the linked devices panel.
+// DE: Öffnet das Panel der verknüpften Geräte.
 function openDevices() {
   devModal = document.createElement('div');
   devModal.className = 'modal-back';
@@ -330,11 +386,15 @@ function openDevices() {
   loadTailscale();
   renderDevices();
 }
+// EN: Loads the Tailscale status for the devices panel.
+// DE: Lädt den Tailscale-Status für das Geräte-Panel.
 async function loadTailscale() {
   const r = await fetch('/api/info', { headers: authHeaders() }).then(r => r.json()).catch(() => null);
   if (r && r.tailscale) { tsInfo = r.tailscale; renderDevices(); }
 }
 setInterval(() => devModal && loadTailscale(), 15000);
+// EN: Info box about reaching the PC from anywhere.
+// DE: Infobox zur Erreichbarkeit des PCs von überall.
 function tsBoxHTML() {
   if (!tsInfo) return '';
   if (tsInfo.running) {
@@ -346,8 +406,12 @@ function tsBoxHTML() {
     <span>${tsInfo.installed ? 'Tailscale is installed but not signed in. Open Tailscale on this PC and log in.'
       : 'Install <b>Tailscale</b> on this PC and on your phone and sign in with the same account. SlideLink then works from anywhere, with no setup here.'}</span></div>`;
 }
+// EN: Closes the devices panel.
+// DE: Schließt das Geräte-Panel.
 function closeDevices() { if (devModal) devModal.remove(); devModal = null; }
 
+// EN: Clicks in the devices panel: link code, rename, unlink.
+// DE: Klicks im Geräte-Panel: Link-Code, Umbenennen, Entfernen.
 async function onDevClick(e) {
   if (e.target === devModal || e.target.id === 'devClose') return closeDevices();
   const b = e.target.closest('button[data-act]');
@@ -368,6 +432,8 @@ async function onDevClick(e) {
     }
   }
 }
+// EN: Draws the device list and the link code card.
+// DE: Zeichnet die Geräteliste und die Karte mit dem Link-Code.
 function renderDevices() {
   if (!devModal || !S) return;
   const list = S.linked || [];
@@ -427,6 +493,8 @@ setInterval(() => devModal && renderDevices(), 1000);
 const pending = {};
 let pendingTimer = null;
 
+// EN: Keeps the user's unsaved edits visible while server updates arrive.
+// DE: Hält ungespeicherte Änderungen sichtbar, während Server-Updates eintreffen.
 function overlayPending() {
   for (const [id, f] of Object.entries(pending)) {
     const s = slides().find(x => x.id === id);
@@ -434,6 +502,8 @@ function overlayPending() {
   }
   if (pendingDeckTitle !== null && S) S.deck.title = pendingDeckTitle;
 }
+// EN: Collects an edit and saves it shortly after typing stops.
+// DE: Sammelt eine Änderung und speichert sie kurz nach dem Tippen.
 function queueEdit(field, value) {
   const id = selectedId;
   if (!id) return;
@@ -443,6 +513,8 @@ function queueEdit(field, value) {
   clearTimeout(pendingTimer);
   pendingTimer = setTimeout(flushEdits, 220);
 }
+// EN: Sends all collected edits to the server.
+// DE: Schickt alle gesammelten Änderungen an den Server.
 function flushEdits() {
   for (const id of Object.keys(pending)) {
     const f = pending[id];
@@ -452,6 +524,8 @@ function flushEdits() {
 }
 let pendingDeckTitle = null, deckTimer = null;
 
+// EN: Builds the editor screen (slide list, preview, fields).
+// DE: Baut den Editor-Bildschirm (Folienliste, Vorschau, Felder).
 function initEditor() {
   document.title = 'SlideLink – Editor';
   $('#app').innerHTML = `
@@ -563,6 +637,8 @@ function initEditor() {
 }
 
 let prevUpdated = {};
+// EN: Updates the editor from the current state.
+// DE: Aktualisiert den Editor aus dem aktuellen Zustand.
 function renderEditor() {
   const d = S.deck, list = d.slides;
   if (!list.find(s => s.id === selectedId)) selectedId = list[0] ? list[0].id : null;
@@ -636,6 +712,8 @@ let shownIndex = -1;
    - while taps are on their way, late updates from the server can't jump the display back
    - when the last tap is answered, the display settles on the server's real position */
 let navChain = Promise.resolve(), navPending = 0;
+// EN: Called when all taps were answered: shows the true server position again.
+// DE: Wird aufgerufen, wenn alle Taps beantwortet sind: zeigt wieder die echte Server-Position.
 function settle(res) {
   if (!res || !('index' in res)) return;
   S.present.index = res.index;
@@ -643,6 +721,8 @@ function settle(res) {
   S.present.blackout = !!res.blackout;
   render();
 }
+// EN: Navigation (next, prev, goto, blackout): taps are queued and sent in order, never skipped.
+// DE: Navigation (weiter, zurück, gehe zu, Blackout): Taps werden eingereiht und der Reihe nach gesendet, nie übersprungen.
 function go(kind, extra = {}) {
   if (!S) return;
   const n = slides().length;
@@ -673,6 +753,8 @@ function go(kind, extra = {}) {
 
 /* ⟳ Resync: fetch the real state and rebuild every slide view from scratch.
    everywhere=true also tells all other screens (PC presenter, other phones) to do the same. */
+// EN: Rebuilds this screen (or all screens) from the server state.
+// DE: Baut diesen Bildschirm (oder alle) aus dem Server-Zustand neu auf.
 async function resync(everywhere) {
   navPending = 0;
   navChain = Promise.resolve();
@@ -684,6 +766,8 @@ async function resync(everywhere) {
   rebuildViews();
   connect();
 }
+// EN: Throws away and redraws all slide views.
+// DE: Verwirft alle Folienansichten und zeichnet sie neu.
 function rebuildViews() {
   for (const el of document.querySelectorAll('#frame, #nowSlide')) {
     el.innerHTML = ''; el._slots = null; el._current = null; el._h = undefined;
@@ -692,6 +776,8 @@ function rebuildViews() {
 }
 /* Esc in the presenter: leave browser fullscreen if on, otherwise close the presentation window.
    The borderless (kiosk) window ignores most shortcuts, so the PC app closes it for us. */
+// EN: Esc in the presenter: leave fullscreen, or close the presentation window.
+// DE: Esc in der Präsentation: Vollbild verlassen oder das Präsentationsfenster schließen.
 function closePresenter() {
   if (document.fullscreenElement) return document.exitFullscreen();
   api({ op: 'close_on_pc' });
@@ -699,6 +785,8 @@ function closePresenter() {
 }
 // keys pressed while the focus is inside a slide frame arrive as messages
 window.addEventListener('message', e => { if (e.data && e.data.sl === 'esc' && MODE === 'present') closePresenter(); });
+// EN: Keyboard and clicker keys: arrows, space, PageUp/Down, B, F, Esc.
+// DE: Tastatur- und Presenter-Tasten: Pfeile, Leertaste, Bild auf/ab, B, F, Esc.
 function navKeys(e) {
   if (e.target.matches && e.target.matches('input, textarea, select')) return;
   const k = e.key;
@@ -711,11 +799,15 @@ function navKeys(e) {
   else if (k === 'Escape' && MODE === 'present') closePresenter();
   else if (k === 'r' || k === 'R') resync(true);
 }
+// EN: Switches browser fullscreen on or off.
+// DE: Schaltet das Browser-Vollbild an oder aus.
 function toggleFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 
+// EN: Builds the presenter screen.
+// DE: Baut den Präsentationsbildschirm.
 function initPresent() {
   document.title = 'SlideLink – Presenting';
   $('#app').innerHTML = `
@@ -748,10 +840,16 @@ function initPresent() {
 }
 /* Smooth slide switching: the current slide plus its neighbours stay loaded (hidden) and we
    crossfade between them, so changing slides never reloads anything (no white flash, no stutter). */
+// EN: Short hash of a text (to notice changed slides).
+// DE: Kurzer Hash eines Texts (um geänderte Folien zu erkennen).
 function strHash(t) { let h = 0; for (let k = 0; k < t.length; k++) h = (h * 31 + t.charCodeAt(k)) | 0; return h; }
+// EN: Key of a loaded slide view (changes when the slide changes).
+// DE: Schlüssel einer geladenen Folienansicht (ändert sich mit der Folie).
 function slotKey(s, n) {
   return [s.id, n, S.deck.theme, strHash((S.deck.css || '') + (s.html || '') + s.title + s.content + s.layout)].join(':');
 }
+// EN: Keeps the current slide (and neighbours) loaded and crossfades between them; sends build steps.
+// DE: Hält die aktuelle Folie (und Nachbarn) geladen und blendet über; schickt die Build-Schritte.
 function renderSlots(container, index, keepAround) {
   const list = slides();
   container._slots = container._slots || new Map();
@@ -792,6 +890,8 @@ function renderSlots(container, index, keepAround) {
   }
   container._current = current;
 }
+// EN: Sends a message to a slide frame.
+// DE: Schickt eine Nachricht an einen Folien-Frame.
 function postFrame(f, msg) { try { f.contentWindow.postMessage(msg, '*'); } catch (_) {} }
 // a slide iframe finished loading: tell it which build step to show
 window.addEventListener('message', e => {
@@ -805,6 +905,8 @@ window.addEventListener('message', e => {
   }
 });
 
+// EN: Updates the presenter from the current state.
+// DE: Aktualisiert die Präsentation aus dem aktuellen Zustand.
 function renderPresent() {
   const list = slides(), i = S.present.index;
   renderSlots($('#frame'), i, 1);
@@ -817,6 +919,8 @@ function renderPresent() {
 /* PHONE REMOTE: see remote.js */
 
 /* ---------------- boot ---------------- */
+// EN: Redraws the screen of the current mode after a state change.
+// DE: Zeichnet den Bildschirm des aktuellen Modus nach einer Zustandsänderung neu.
 function render() {
   if (!S) return;
   if (MODE === 'editor') renderEditor();

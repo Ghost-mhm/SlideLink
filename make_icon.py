@@ -1,3 +1,5 @@
+# SlideLink · EN: Draws the SlideLink icons (PNG and ICO) without extra libraries.
+# SlideLink · DE: Zeichnet die SlideLink-Symbole (PNG und ICO) ohne Zusatzbibliotheken.
 """Draws the SlideLink icon (no image libraries needed) and writes
 static/icon.ico (16-256 px) plus static/icon-192.png and static/icon-512.png."""
 import os
@@ -8,6 +10,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 BG, ACCENT, DARK = (20, 21, 28), (124, 140, 255), (20, 21, 28)
 
 
+# EN: True if a point lies inside a rounded rectangle.
+# DE: True, wenn ein Punkt in einem abgerundeten Rechteck liegt.
 def rrect(x, y, x0, y0, x1, y1, r):
     """Is point (x, y) inside the rounded rectangle?"""
     if x < x0 or x > x1 or y < y0 or y > y1:
@@ -17,6 +21,8 @@ def rrect(x, y, x0, y0, x1, y1, r):
     return (x - cx) ** 2 + (y - cy) ** 2 <= r * r
 
 
+# EN: Mixes two colors.
+# DE: Mischt zwei Farben.
 def shade(u, v):
     """Colour of the icon at (u, v) in a 512x512 design space, or None for transparent."""
     if not rrect(u, v, 0, 0, 512, 512, 110):
@@ -32,6 +38,8 @@ def shade(u, v):
     return BG
 
 
+# EN: Renders the icon at a given size as RGBA pixels.
+# DE: Rendert das Symbol in einer Größe als RGBA-Pixel.
 def render(size, ss=4):
     rows = []
     step = 512 / (size * ss)
@@ -54,15 +62,21 @@ def render(size, ss=4):
     return rows
 
 
+# EN: Encodes RGBA pixels as a PNG file.
+# DE: Kodiert RGBA-Pixel als PNG-Datei.
 def png(rows, size):
     raw = b"".join(b"\0" + r for r in rows)
 
+    # EN: One PNG chunk with CRC.
+    # DE: Ein PNG-Chunk mit CRC.
     def chunk(t, d):
         return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
     return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
             + chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b""))
 
 
+# EN: Writes icon.svg, the PNG sizes and icon.ico.
+# DE: Schreibt icon.svg, die PNG-Größen und icon.ico.
 def main():
     static = os.path.join(ROOT, "static")
     sizes = [16, 24, 32, 48, 64, 128, 256]

@@ -1,3 +1,5 @@
+# SlideLink · EN: SlideLink server: HTTP API, live sync (SSE), library, devices, imports and folder watcher. Standard library only.
+# SlideLink · DE: SlideLink-Server: HTTP-API, Live-Sync (SSE), Bibliothek, Geräte, Importe und Ordnerüberwachung. Nur Standardbibliothek.
 """SlideLink server - live-synced presentations for PC, Android and Claude.
 
 Run:  python server.py        (then open http://localhost:8765)
@@ -34,6 +36,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(ROOT, "static")
 
 
+# EN: Where presentations and devices are stored (%LOCALAPPDATA%\SlideLink\data or SLIDELINK_DATA).
+# DE: Wo Präsentationen und Geräte gespeichert werden (%LOCALAPPDATA%\SlideLink\data oder SLIDELINK_DATA).
 def _default_data_dir():
     if os.name == "nt":
         return os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "SlideLink", "data")
@@ -58,6 +62,8 @@ BUILD_ATTR = re.compile(r'data-build-(?:in|out)="([^"]*)"', re.I)
 FRAGMENT = re.compile(r'class="[^"]*\bfragment\b', re.I)
 
 
+# EN: Number of clicks a slide needs before Next goes to the next slide (claude.ai build rules).
+# DE: Anzahl der Klicks, die eine Folie braucht, bevor Weiter zur nächsten Folie geht (claude.ai-Build-Regeln).
 def build_steps(slide):
     """How many clicks a designed slide needs before moving on (claude.ai build semantics):
     every build item without 'auto' starts a new click; each .fragment is one click."""
@@ -89,10 +95,14 @@ PPT_EXT = {".pptx", ".ppt", ".odp", ".ppsx", ".pps", ".potx"}
 
 
 # ---------------------------------------------------------------- importing other formats
+# EN: Plain text of an HTML fragment (tags removed, entities decoded).
+# DE: Reiner Text eines HTML-Stücks (Tags entfernt, Entities aufgelöst).
 def _text(fragment):
     return " ".join(htmllib.unescape(re.sub(r"<[^>]+>", " ", fragment)).split())
 
 
+# EN: Splits one claude.ai slide file into its <section> HTML, title and speaker notes.
+# DE: Zerlegt eine claude.ai-Foliendatei in <section>-HTML, Titel und Sprechernotizen.
 def parse_claude_slide(src):
     """Split a claude.ai slide file into (html without notes, speaker notes, title)."""
     notes = ""
@@ -109,6 +119,8 @@ def parse_claude_slide(src):
     return src.strip(), notes, title
 
 
+# EN: Turns a raw claude.ai Slides deck (index + css + slides) into an import_deck operation.
+# DE: Macht aus einem rohen claude.ai-Slides-Deck (Index + CSS + Folien) eine import_deck-Operation.
 def claude_to_import(raw):
     """Raw claude.ai deck {slug, url, index, css, slides:[{id, html}]} -> import_deck op."""
     idx = raw.get("index") or {}
@@ -126,6 +138,8 @@ def claude_to_import(raw):
             "source": {"kind": "claude-slides", "slug": str(raw.get("slug") or "")[:80], "url": str(raw.get("url") or "")}}
 
 
+# EN: Imports an HTML file: a single-file deck becomes slides, any other page one interactive page.
+# DE: Importiert eine HTML-Datei: Ein Ein-Datei-Deck wird zu Folien, jede andere Seite zu einer interaktiven Seite.
 def html_to_import(text, title):
     """A single-file deck: <head> fonts/styles + one <section> per slide."""
     t = re.search(r"<title[^>]*>([\s\S]*?)</title>", text, re.I)
@@ -152,6 +166,8 @@ def html_to_import(text, title):
     return op
 
 
+# EN: Imports a deck packed as .zip (claude.ai export or a folder with deck.json).
+# DE: Importiert ein als .zip gepacktes Deck (claude.ai-Export oder Ordner mit deck.json).
 def zip_to_import(data, title):
     z = zipfile.ZipFile(io.BytesIO(data))
     infos = z.infolist()
@@ -187,6 +203,8 @@ def zip_to_import(data, title):
     return op
 
 
+# EN: Imports a SlideLink deck saved as JSON.
+# DE: Importiert ein als JSON gespeichertes SlideLink-Deck.
 def json_to_import(data, title):
     d = json.loads(data.decode("utf-8-sig") if isinstance(data, bytes) else data)
     if isinstance(d, dict) and isinstance(d.get("slides"), list):
@@ -195,6 +213,8 @@ def json_to_import(data, title):
     raise ValueError("This JSON file is not a SlideLink presentation")
 
 
+# EN: Creates a new media folder with a random, unguessable name; returns (name, path).
+# DE: Legt einen neuen Medienordner mit zufälligem, unerratbarem Namen an; gibt (Name, Pfad) zurück.
 def _media_dir():
     tok = secrets.token_hex(12)
     path = os.path.join(MEDIA_DIR, tok)
@@ -202,6 +222,8 @@ def _media_dir():
     return tok, path
 
 
+# EN: A slide that shows one picture full-screen (used for PowerPoint and image imports).
+# DE: Eine Folie, die ein Bild bildschirmfüllend zeigt (für PowerPoint- und Bild-Importe).
 def image_slide(tok, fname, title="", notes=""):
     return {"layout": "html", "title": title, "notes": notes, "status": "done",
             "html": f'<section style="background:#000;padding:0;display:flex;align-items:center;justify-content:center">'
@@ -227,6 +249,8 @@ ConvertTo-Json -InputObject @($items) -Depth 3 | Set-Content -Encoding UTF8 (Joi
 """
 
 
+# EN: Lets the installed PowerPoint export every slide as a picture (with notes) and imports them.
+# DE: Lässt das installierte PowerPoint jede Folie als Bild exportieren (mit Notizen) und importiert sie.
 def powerpoint_to_import(data, ext, title):
     """Uses the installed PowerPoint to turn every slide into a full-quality picture (+ notes)."""
     if os.name != "nt":
@@ -263,6 +287,8 @@ def powerpoint_to_import(data, ext, title):
     return {"op": "import_deck", "title": title, "slides": slides, "source": None}
 
 
+# EN: Chooses the right importer for an uploaded file by its extension.
+# DE: Wählt anhand der Dateiendung den passenden Importer für eine hochgeladene Datei.
 def upload_to_op(name, data):
     ext = os.path.splitext(name.lower())[1]
     title = os.path.splitext(os.path.basename(name))[0][:120] or "Upload"
@@ -297,10 +323,14 @@ WATCH_DIR = os.environ.get("SLIDELINK_WATCH") or os.path.join(os.path.expanduser
 KICK = object()           # queue sentinel: device was unlinked
 
 
+# EN: A short random id for slides and devices.
+# DE: Eine kurze Zufalls-ID für Folien und Geräte.
 def new_id():
     return uuid.uuid4().hex[:8]
 
 
+# EN: Version of the web files (newest change time): when it changes, open windows reload themselves.
+# DE: Version der Web-Dateien (jüngste Änderungszeit): Ändert sie sich, laden sich offene Fenster neu.
 def app_build():
     """Changes whenever a file of the app itself changes, so open windows know to reload."""
     try:
@@ -309,6 +339,8 @@ def app_build():
         return "0"
 
 
+# EN: Writes JSON atomically (temp file + replace), so a crash never leaves a broken file.
+# DE: Schreibt JSON atomar (Temp-Datei + Ersetzen), damit ein Absturz nie eine kaputte Datei hinterlässt.
 def write_json(path, data):
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -316,6 +348,8 @@ def write_json(path, data):
     os.replace(tmp, path)
 
 
+# EN: Creates a new slide with defaults for missing fields.
+# DE: Erzeugt eine neue Folie mit Standardwerten für fehlende Felder.
 def make_slide(**fields):
     s = {"id": new_id(), "title": "", "content": "", "notes": "", "layout": "content",
          "status": "draft", "updated_at": time.time(), "updated_by": "you"}
@@ -325,6 +359,8 @@ def make_slide(**fields):
     return s
 
 
+# EN: The welcome presentation shown on the very first start.
+# DE: Die Willkommens-Präsentation beim allerersten Start.
 def sample_deck():
     return {
         "title": "My first SlideLink deck",
@@ -351,9 +387,13 @@ if os.path.exists(_old_devices) and not os.path.exists(DEVICES_FILE):
     shutil.copyfile(_old_devices, DEVICES_FILE)
 
 
+# EN: Linked devices: one-time link codes, tokens (stored only as SHA-256 hashes), rename/unlink.
+# DE: Verknüpfte Geräte: einmalige Link-Codes, Tokens (nur als SHA-256-Hash gespeichert), Umbenennen/Entfernen.
 class Registry:
     """Linked devices. Tokens are stored only as SHA-256 hashes."""
 
+    # EN: Loads the device list from devices.json.
+    # DE: Lädt die Geräteliste aus devices.json.
     def __init__(self):
         self.lock = threading.RLock()
         self.code = None
@@ -365,19 +405,27 @@ class Registry:
         except (FileNotFoundError, ValueError):
             self.items = []
 
+    # EN: Saves the device list.
+    # DE: Speichert die Geräteliste.
     def save(self):
         with self.lock:
             write_json(DEVICES_FILE, {"devices": self.items})
 
+    # EN: SHA-256 of a token: only this is stored, never the token itself.
+    # DE: SHA-256 eines Tokens: Nur dieser wird gespeichert, nie das Token selbst.
     @staticmethod
     def _hash(token):
         return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
+    # EN: Shortens and cleans a device name typed by the user.
+    # DE: Kürzt und bereinigt einen vom Benutzer eingegebenen Gerätenamen.
     @staticmethod
     def _clean_name(name, fallback="Phone"):
         name = " ".join(str(name or "").split())[:40]
         return name or fallback
 
+    # EN: Finds the device that belongs to a token (or None).
+    # DE: Findet das Gerät zu einem Token (oder None).
     def by_token(self, token):
         if not token:
             return None
@@ -388,6 +436,8 @@ class Registry:
                     return d
         return None
 
+    # EN: Finds a device by its id.
+    # DE: Findet ein Gerät anhand seiner ID.
     def get(self, did):
         with self.lock:
             for d in self.items:
@@ -395,6 +445,8 @@ class Registry:
                     return d
         raise ValueError("Unknown device")
 
+    # EN: Creates a new 6-digit one-time link code (valid 10 minutes).
+    # DE: Erzeugt einen neuen 6-stelligen Einmal-Link-Code (10 Minuten gültig).
     def new_code(self):
         with self.lock:
             self.code = f"{secrets.randbelow(1_000_000):06d}"
@@ -402,6 +454,8 @@ class Registry:
             self.code_tries = 0
             return self.code, self.code_exp
 
+    # EN: Links a new device with the code; returns the device and its new token. 8 wrong tries kill the code.
+    # DE: Verknüpft ein neues Gerät mit dem Code; gibt Gerät und neues Token zurück. 8 Fehlversuche machen den Code ungültig.
     def pair(self, code, name, kind):
         with self.lock:
             if not self.code or time.time() > self.code_exp:
@@ -422,6 +476,8 @@ class Registry:
             self.save()
             return dev, token
 
+    # EN: Renames a linked device.
+    # DE: Benennt ein verknüpftes Gerät um.
     def rename(self, did, name):
         with self.lock:
             d = self.get(did)
@@ -429,6 +485,8 @@ class Registry:
             self.save()
             return d
 
+    # EN: Removes a linked device (its token stops working at once).
+    # DE: Entfernt ein verknüpftes Gerät (sein Token funktioniert sofort nicht mehr).
     def unlink(self, did):
         with self.lock:
             d = self.get(did)
@@ -436,6 +494,8 @@ class Registry:
             self.save()
             return d
 
+    # EN: The device list for the UI: online state, roles, connection type, app version (no secrets).
+    # DE: Die Geräteliste für die Oberfläche: online, Rollen, Verbindungsart, App-Version (keine Geheimnisse).
     def public(self, clients):
         online, via = {}, {}
         for c in clients.values():
@@ -455,6 +515,8 @@ class Registry:
 registry = Registry()
 
 
+# EN: Newest Android app version offered by this PC (static/app-version.json).
+# DE: Neueste Android-App-Version, die dieser PC anbietet (static/app-version.json).
 def app_latest():
     """Newest Android app version SlideLink offers (static/app-version.json), for the 'update your phone' popup."""
     try:
@@ -467,9 +529,13 @@ def app_latest():
 
 
 # ---------------------------------------------------------------- library
+# EN: All presentations on disk (decks/*.json) with cached summaries for the library views.
+# DE: Alle Präsentationen auf der Festplatte (decks/*.json) mit zwischengespeicherten Zusammenfassungen für die Bibliothek.
 class Library:
     """Every presentation is one JSON file in DECKS_DIR."""
 
+    # EN: Loads library.json and creates the welcome deck if the library is empty.
+    # DE: Lädt library.json und legt das Willkommens-Deck an, wenn die Bibliothek leer ist.
     def __init__(self):
         self.lock = threading.RLock()
         self.version = 0
@@ -483,6 +549,8 @@ class Library:
         if not self.ids():
             self.create(**sample_deck())
 
+    # EN: Moves a deck from the very first SlideLink version into the library.
+    # DE: Übernimmt ein Deck aus der allerersten SlideLink-Version in die Bibliothek.
     def _migrate_legacy(self):
         """Bring over deck.json from the first version (stored next to server.py)."""
         old_deck = os.path.join(ROOT, "deck.json")
@@ -496,14 +564,20 @@ class Library:
             except (OSError, ValueError):
                 pass
 
+    # EN: File path of a deck.
+    # DE: Dateipfad eines Decks.
     def path(self, did):
         if not isinstance(did, str) or not DECK_ID.match(did):
             raise ValueError("Unknown presentation")
         return os.path.join(DECKS_DIR, did + ".json")
 
+    # EN: Ids of all decks.
+    # DE: IDs aller Decks.
     def ids(self):
         return [f[:-5] for f in os.listdir(DECKS_DIR) if f.endswith(".json") and DECK_ID.match(f[:-5])]
 
+    # EN: Loads one complete deck.
+    # DE: Lädt ein vollständiges Deck.
     def load(self, did):
         try:
             with open(self.path(did), encoding="utf-8") as f:
@@ -516,12 +590,16 @@ class Library:
         deck.setdefault("slides", [])
         return deck
 
+    # EN: Saves a deck and bumps the library version (so all screens refresh).
+    # DE: Speichert ein Deck und erhöht die Bibliotheksversion (damit alle Bildschirme aktualisieren).
     def save(self, deck):
         deck["updated_at"] = time.time()
         with self.lock:
             write_json(self.path(deck["id"]), deck)
             self.version += 1
 
+    # EN: Creates a new deck (optionally with slides, CSS, fonts, source, kind and date).
+    # DE: Erstellt ein neues Deck (optional mit Folien, CSS, Schriften, Quelle, Art und Datum).
     def create(self, title="Untitled presentation", theme="midnight", slides=None, **extra):
         now = time.time()
         deck = {"id": uuid.uuid4().hex[:12], "title": str(title or "Untitled presentation")[:200],
@@ -544,16 +622,22 @@ class Library:
         self.save(deck)
         return deck
 
+    # EN: Deletes a deck.
+    # DE: Löscht ein Deck.
     def delete(self, did):
         with self.lock:
             os.remove(self.path(did))
             self._summaries.pop(did, None)
             self.version += 1
 
+    # EN: Remembers which deck is open (and saves the watcher list).
+    # DE: Merkt sich, welches Deck offen ist (und speichert die Watcher-Liste).
     def set_active(self, did):
         self.meta["active"] = did
         write_json(LIBRARY_FILE, self.meta)
 
+    # EN: Short summary of a deck for lists (title, cover, counts, kind, date), cached by file time.
+    # DE: Kurze Zusammenfassung eines Decks für Listen (Titel, Cover, Zahlen, Art, Datum), zwischengespeichert nach Dateizeit.
     def summary(self, did):
         p = self.path(did)
         mtime = os.path.getmtime(p)
@@ -573,6 +657,8 @@ class Library:
         self._summaries[did] = (mtime, summ)
         return summ
 
+    # EN: Summaries of all decks, newest first.
+    # DE: Zusammenfassungen aller Decks, neueste zuerst.
     def listing(self):
         out = []
         for did in self.ids():
@@ -588,7 +674,11 @@ library = Library()
 
 
 # ---------------------------------------------------------------- deck state
+# EN: The live state shared by all screens: open deck, presentation position, activity, Claude status, connected clients.
+# DE: Der gemeinsame Live-Zustand aller Bildschirme: offenes Deck, Präsentationsposition, Aktivitäten, Claude-Status, verbundene Clients.
 class Store:
+    # EN: Opens the last active deck.
+    # DE: Öffnet das zuletzt aktive Deck.
     def __init__(self):
         self.lock = threading.RLock()
         self.clients = {}   # client id -> {"role", "device", "q"}
@@ -603,14 +693,20 @@ class Store:
             self.deck = library.load(first["id"]) if first else library.create()
         library.set_active(self.deck["id"])
 
+    # EN: Saves the open deck.
+    # DE: Speichert das offene Deck.
     def save(self):
         library.save(self.deck)
 
+    # EN: Opens another deck on all screens, starting at slide 1.
+    # DE: Öffnet ein anderes Deck auf allen Bildschirmen, beginnend bei Folie 1.
     def open_deck(self, did):
         self.deck = library.load(did)
         library.set_active(did)
         self.present.update(index=0, step=0, blackout=False, changed_at=time.time())
 
+    # EN: The complete state as sent to every screen.
+    # DE: Der komplette Zustand, wie er an jeden Bildschirm geschickt wird.
     def snapshot(self):
         roles = {}
         for c in self.clients.values():
@@ -624,6 +720,8 @@ class Store:
                                for r in PC_ROLES},
                 "server_time": time.time()}
 
+    # EN: Pushes the current state to every connected screen (SSE).
+    # DE: Schickt den aktuellen Zustand an jeden verbundenen Bildschirm (SSE).
     def publish(self, origin=None):
         with self.lock:
             self.version += 1
@@ -632,26 +730,36 @@ class Store:
             for c in list(self.clients.values()):
                 c["q"].put(data)
 
+    # EN: Disconnects all live connections of an unlinked device.
+    # DE: Trennt alle Live-Verbindungen eines entfernten Geräts.
     def kick(self, device_id):
         with self.lock:
             for c in self.clients.values():
                 if c["device"] == device_id:
                     c["q"].put(KICK)
 
+    # EN: Adds an entry to the activity feed.
+    # DE: Fügt einen Eintrag zum Aktivitätsverlauf hinzu.
     def log(self, by, text, slide_id=None):
         self.activity.insert(0, {"at": time.time(), "by": by, "text": text, "slide_id": slide_id})
         del self.activity[50:]
 
+    # EN: Position of a slide in the open deck (error if missing).
+    # DE: Position einer Folie im offenen Deck (Fehler, wenn sie fehlt).
     def _index(self, slide_id):
         for i, s in enumerate(self.deck["slides"]):
             if s["id"] == slide_id:
                 return i
         raise ValueError(f"No slide with id '{slide_id}'")
 
+    # EN: Readable name of a slide for the activity feed.
+    # DE: Lesbarer Name einer Folie für den Aktivitätsverlauf.
     def _label(self, i):
         t = self.deck["slides"][i]["title"] or "untitled"
         return f"slide {i + 1} “{t[:40]}”"
 
+    # EN: Validates slide fields (layout, status, lengths).
+    # DE: Prüft Folienfelder (Layout, Status, Längen).
     @staticmethod
     def _check(fields):
         if "layout" in fields and fields["layout"] not in LAYOUTS:
@@ -662,10 +770,14 @@ class Store:
             if k in fields and not isinstance(fields[k], str):
                 raise ValueError(f"{k} must be a string")
 
+    # EN: Keeps the presentation position inside the deck after changes.
+    # DE: Hält die Präsentationsposition nach Änderungen innerhalb des Decks.
     def _clamp_present(self):
         n = len(self.deck["slides"])
         self.present["index"] = max(0, min(self.present["index"], max(n - 1, 0)))
 
+    # EN: Runs one operation (navigation, editing, decks, import, Claude status). Returns (result, deck changed).
+    # DE: Führt eine Operation aus (Navigation, Bearbeiten, Decks, Import, Claude-Status). Gibt (Ergebnis, Deck geändert) zurück.
     def apply(self, op):
         """Apply one operation. Returns (result, deck_changed)."""
         kind = op.get("op")
@@ -885,6 +997,8 @@ TAILNET = ipaddress.ip_network("100.64.0.0/10")   # Tailscale address range
 _ts_cache = {"at": 0, "info": None}
 
 
+# EN: True if an IP address belongs to Tailscale (100.64.0.0/10).
+# DE: True, wenn eine IP-Adresse zu Tailscale gehört (100.64.0.0/10).
 def _is_tailnet(ip):
     try:
         return ipaddress.ip_address(ip) in TAILNET
@@ -892,6 +1006,8 @@ def _is_tailnet(ip):
         return False
 
 
+# EN: All IPv4 addresses of this PC.
+# DE: Alle IPv4-Adressen dieses PCs.
 def local_ips():
     ips = set()
     try:
@@ -909,10 +1025,14 @@ def local_ips():
     return sorted(ip for ip in ips if not ip.startswith(("127.", "169.254.")))
 
 
+# EN: Home-network addresses of this PC (no Tailscale, no loopback).
+# DE: Heimnetz-Adressen dieses PCs (kein Tailscale, kein Loopback).
 def lan_ips():
     return [ip for ip in local_ips() if not _is_tailnet(ip)]
 
 
+# EN: Tailscale status of this PC: installed, running, IP and DNS name.
+# DE: Tailscale-Status dieses PCs: installiert, läuft, IP und DNS-Name.
 def tailscale():
     """Tailscale status for this PC (cached 20 s). Works without Tailscale installed."""
     if time.time() - _ts_cache["at"] < 20 and _ts_cache["info"] is not None:
@@ -940,6 +1060,8 @@ def tailscale():
     return info
 
 
+# EN: Addresses a phone can use to reach this PC (Tailscale and home Wi-Fi).
+# DE: Adressen, über die ein Handy diesen PC erreicht (Tailscale und Heim-WLAN).
 def phone_urls():
     """Addresses a phone can use, best first."""
     urls = []
@@ -967,6 +1089,8 @@ img{{display:block;width:min(96%,1200px);margin:0 auto 22px;background:#fff;box-
 </style></head><body>{pages}</body></html>"""
 
 
+# EN: Imports a PDF doc: every page rendered to a picture, stacked as one scrolling document.
+# DE: Importiert ein PDF-Doc: Jede Seite wird zum Bild und alles zu einem scrollbaren Dokument.
 def pdf_to_doc(path, title):
     """A PDF (e.g. a claude.ai Doc exported as PDF): every page rendered to a picture by Windows' own PDF engine,
     stacked on one scrolling page. Looks exactly like the original."""
@@ -987,6 +1111,8 @@ def pdf_to_doc(path, title):
                         "notes": f"Document, {len(pages)} page{'s' if len(pages) != 1 else ''}. Next/Back scroll one screen."}]}
 
 
+# EN: Imports an HTML doc as one scrolling page (adds a readable style if it has none).
+# DE: Importiert ein HTML-Doc als eine scrollbare Seite (mit lesbarem Stil, falls keiner vorhanden ist).
 def html_to_doc(text, title):
     t = re.search(r"<title[^>]*>(.*?)</title>", text, re.S | re.I)
     title = (_text(t.group(1)) if t and _text(t.group(1)) else title)[:120]
@@ -1000,6 +1126,8 @@ def html_to_doc(text, title):
                         "notes": "Document. Next/Back scroll one screen."}]}
 
 
+# EN: Date of a presentation/doc: claude.ai's date from source.json, else the file time.
+# DE: Datum einer Präsentation/eines Docs: claude.ai-Datum aus source.json, sonst die Dateizeit.
 def item_date(path):
     """When a presentation/doc was made: "date" in source.json (claude.ai's own date) or the file's time."""
     src = os.path.join(path, "source.json") if os.path.isdir(path) else os.path.splitext(path)[0] + ".source.json"
@@ -1018,6 +1146,8 @@ def item_date(path):
         return None
 
 
+# EN: Reads a Claude Slides deck folder (deck.json, deck.css, slides/, assets/, source.json).
+# DE: Liest einen Claude-Slides-Deck-Ordner (deck.json, deck.css, slides/, assets/, source.json).
 def folder_deck_raw(path):
     """A Claude Slides deck folder: deck.json + slides/<id>.html (+ deck.css, + source.json)."""
     with open(os.path.join(path, "deck.json"), encoding="utf-8-sig") as f:
@@ -1064,6 +1194,8 @@ def folder_deck_raw(path):
     return {"slug": src.get("slug") or "", "url": src.get("url") or "", "index": index, "css": css, "slides": slides}
 
 
+# EN: Fingerprint of a folder (names, sizes, times): changes when any file changes.
+# DE: Fingerabdruck eines Ordners (Namen, Größen, Zeiten): ändert sich, wenn sich eine Datei ändert.
 def folder_signature(path):
     """Changes whenever any file of the deck folder changes (so edits re-sync)."""
     sig = []
@@ -1077,13 +1209,19 @@ def folder_signature(path):
     return hashlib.sha256(json.dumps(sorted(sig)).encode()).hexdigest()
 
 
+# EN: Background thread that imports everything saved in ~/Claude Presentations (and Docs/) automatically.
+# DE: Hintergrund-Thread, der alles automatisch importiert, was in ~/Claude Presentations (und Docs/) gespeichert wird.
 class Watcher(threading.Thread):
+    # EN: Creates the watched folder if needed.
+    # DE: Legt den überwachten Ordner an, falls nötig.
     def __init__(self):
         super().__init__(daemon=True)
         os.makedirs(WATCH_DIR, exist_ok=True)
         self.pending = {}   # item -> signature from the previous scan (import only once it stopped changing)
         self.status = {"folder": WATCH_DIR, "last": None, "error": None, "count": 0}
 
+    # EN: Scans every 3 seconds; errors never stop the watcher.
+    # DE: Prüft alle 3 Sekunden; Fehler halten den Watcher nie an.
     def run(self):
         while True:
             try:
@@ -1092,6 +1230,8 @@ class Watcher(threading.Thread):
                 self.status["error"] = str(e)[:200]
             time.sleep(3)
 
+    # EN: Finds new or changed items and imports them once they stopped changing.
+    # DE: Findet neue oder geänderte Einträge und importiert sie, sobald sie sich nicht mehr ändern.
     def scan(self):
         done = library.meta.setdefault("synced", {})
         items = []
@@ -1120,6 +1260,8 @@ class Watcher(threading.Thread):
             self.pending.pop(path, None)
             self.sync(path, kind, sig)
 
+    # EN: Imports one deck folder, file or doc (updates the existing one instead of duplicating).
+    # DE: Importiert einen Deck-Ordner, eine Datei oder ein Doc (aktualisiert das vorhandene, statt es zu verdoppeln).
     def sync(self, path, kind, sig):
         name = os.path.basename(path)
         done = library.meta["synced"]
@@ -1169,15 +1311,21 @@ class Watcher(threading.Thread):
 watcher = Watcher()
 
 
+# EN: Starts the folder watcher (called by the desktop app and main()).
+# DE: Startet die Ordnerüberwachung (aufgerufen von der Desktop-App und main()).
 def start_background():
     if not watcher.is_alive():
         watcher.start()
 
 
 # ---------------------------------------------------------------- HTTP
+# EN: The HTTP request handler: web UI, REST API, live events, uploads.
+# DE: Der HTTP-Request-Handler: Web-Oberfläche, REST-API, Live-Events, Uploads.
 class Handler(BaseHTTPRequestHandler):
     server_version = "SlideLink/1.1"
 
+    # EN: Logs requests from phones (path only, no tokens); the PC itself stays quiet.
+    # DE: Protokolliert Anfragen von Handys (nur Pfad, keine Tokens); der PC selbst bleibt still.
     def log_message(self, fmt, *args):
         # the PC itself stays quiet; phones/tablets are logged (path only, no tokens) to diagnose remote problems
         try:
@@ -1192,6 +1340,8 @@ class Handler(BaseHTTPRequestHandler):
             pass
 
     # ----- auth -----
+    # EN: True for the PC itself: 127.0.0.1 without proxy headers (Funnel/proxies never count as the PC).
+    # DE: True für den PC selbst: 127.0.0.1 ohne Proxy-Header (Funnel/Proxys gelten nie als PC).
     def _is_host(self):
         if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
             return False
@@ -1200,6 +1350,8 @@ class Handler(BaseHTTPRequestHandler):
         proxied = ("X-Forwarded-For", "Forwarded", "Tailscale-User-Login", "X-Real-IP")
         return not any(self.headers.get(h) for h in proxied)
 
+    # EN: The device token from the sl_token cookie.
+    # DE: Das Geräte-Token aus dem Cookie sl_token.
     def _cookie_token(self):
         try:
             c = SimpleCookie(self.headers.get("Cookie") or "")
@@ -1207,9 +1359,13 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return c[COOKIE].value if COOKIE in c else None
 
+    # EN: The device token from cookie or X-SlideLink-Token header.
+    # DE: Das Geräte-Token aus Cookie oder Header X-SlideLink-Token.
     def _token(self):
         return self._cookie_token() or self.headers.get("X-SlideLink-Token")
 
+    # EN: Who is asking: the PC (HOST), a linked device, or None.
+    # DE: Wer fragt: der PC (HOST), ein verknüpftes Gerät oder None.
     def auth(self):
         if self._is_host():
             return HOST
@@ -1218,6 +1374,8 @@ class Handler(BaseHTTPRequestHandler):
             dev["last_seen"] = time.time()
         return dev
 
+    # EN: Cookie header that stores (or clears) the device token for 10 years.
+    # DE: Cookie-Header, der das Geräte-Token für 10 Jahre speichert (oder löscht).
     @staticmethod
     def _set_cookie(token):
         if token is None:
@@ -1225,6 +1383,8 @@ class Handler(BaseHTTPRequestHandler):
         return ("Set-Cookie", f"{COOKIE}={token}; Max-Age={COOKIE_AGE}; Path=/; HttpOnly; SameSite=Lax")
 
     # ----- responses -----
+    # EN: Sends a JSON response.
+    # DE: Sendet eine JSON-Antwort.
     def _json(self, obj, code=200, headers=()):
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
@@ -1236,6 +1396,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    # EN: Sends a file (with the right content type; the APK as a download).
+    # DE: Sendet eine Datei (mit passendem Typ; die APK als Download).
     def _file(self, path):
         try:
             with open(path, "rb") as f:
@@ -1255,6 +1417,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    # EN: Reads and parses the JSON request body (with a size limit).
+    # DE: Liest und parst den JSON-Body der Anfrage (mit Größenlimit).
     def _body(self, limit=40_000_000):
         length = int(self.headers.get("Content-Length") or 0)
         if length > limit:
@@ -1265,6 +1429,8 @@ class Handler(BaseHTTPRequestHandler):
         return data
 
     # ----- routes -----
+    # EN: GET: web pages, static files, media, state, library, info, live events.
+    # DE: GET: Webseiten, statische Dateien, Medien, Zustand, Bibliothek, Info, Live-Events.
     def do_GET(self):
         url = urlparse(self.path)
         p = url.path
@@ -1304,6 +1470,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._file(full)
         return self._json({"error": "not found"}, 404)
 
+    # EN: CORS headers for /api/import, only for claude.ai and the Chrome extension.
+    # DE: CORS-Header für /api/import, nur für claude.ai und die Chrome-Erweiterung.
     def _cors_import(self):
         origin = self.headers.get("Origin") or ""
         if IMPORT_ORIGINS.match(origin):
@@ -1313,6 +1481,8 @@ class Handler(BaseHTTPRequestHandler):
                     ("Access-Control-Allow-Private-Network", "true")]
         return None
 
+    # EN: CORS preflight for /api/import.
+    # DE: CORS-Vorabanfrage für /api/import.
     def do_OPTIONS(self):
         cors = self._cors_import() if urlparse(self.path).path == "/api/import" else None
         self.send_response(204 if cors else 403)
@@ -1321,6 +1491,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    # EN: CSRF protection: POSTs must come from SlideLink's own pages.
+    # DE: CSRF-Schutz: POSTs müssen von SlideLinks eigenen Seiten kommen.
     def _same_origin(self):
         """Block other websites from driving SlideLink (CSRF): JSON only, and no foreign Origin."""
         if "application/json" not in (self.headers.get("Content-Type") or ""):
@@ -1328,6 +1500,8 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         return not origin or urlparse(origin).netloc == (self.headers.get("Host") or "")
 
+    # EN: POST: operations, linking, devices, uploads, imports, window control.
+    # DE: POST: Operationen, Verknüpfen, Geräte, Uploads, Importe, Fenstersteuerung.
     def do_POST(self):
         p = urlparse(self.path).path
         try:
@@ -1390,6 +1564,8 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, TypeError, KeyError) as e:
             return self._json({"ok": False, "error": str(e)}, 400)
 
+    # EN: Handles a file upload (PowerPoint, zip, html, json, pictures).
+    # DE: Verarbeitet einen Datei-Upload (PowerPoint, zip, html, json, Bilder).
     def _upload(self):
         origin = self.headers.get("Origin")
         if origin and urlparse(origin).netloc != (self.headers.get("Host") or ""):
@@ -1424,6 +1600,8 @@ class Handler(BaseHTTPRequestHandler):
         print(f"  upload: {name} -> {result}")
         return self._json({"ok": True, "result": result})
 
+    # EN: Tells a client whether it is linked (and as which device).
+    # DE: Sagt einem Client, ob er verknüpft ist (und als welches Gerät).
     def _whoami(self):
         dev = self.auth()
         headers = []
@@ -1432,6 +1610,8 @@ class Handler(BaseHTTPRequestHandler):
         info = {"id": dev["id"], "name": dev["name"], "type": dev["type"]} if dev else None
         return self._json({"linked": bool(dev), "is_host": dev is HOST, "device": info}, headers=headers)
 
+    # EN: Links a device with the 6-digit code and sets its token cookie.
+    # DE: Verknüpft ein Gerät mit dem 6-stelligen Code und setzt sein Token-Cookie.
     def _pair(self, body):
         dev, token = registry.pair(body.get("code"), body.get("name"), body.get("type"))
         store.log(dev["name"], "was linked to this PC")
@@ -1441,6 +1621,8 @@ class Handler(BaseHTTPRequestHandler):
                            "device": {"id": dev["id"], "name": dev["name"], "type": dev["type"]}},
                           headers=[self._set_cookie(token)])
 
+    # EN: Unlinks a device (not the PC) and disconnects it.
+    # DE: Entfernt ein Gerät (nicht den PC) und trennt seine Verbindung.
     def _unlink(self, body, dev):
         did = body.get("id")
         if did == "host":
@@ -1452,6 +1634,8 @@ class Handler(BaseHTTPRequestHandler):
         headers = [self._set_cookie(None)] if dev.get("id") == did else []
         return self._json({"ok": True}, headers=headers)
 
+    # EN: Runs an operation; phones may only use remote operations.
+    # DE: Führt eine Operation aus; Handys dürfen nur Fernbedienungs-Operationen nutzen.
     def _op(self, op, dev):
         if dev is not HOST:
             op["by"] = dev["name"]  # linked devices are shown by name in the activity feed
@@ -1474,6 +1658,8 @@ class Handler(BaseHTTPRequestHandler):
         store.publish(origin=op.get("origin"))
         return self._json({"ok": True, "result": result})
 
+    # EN: Server-Sent Events stream: sends the state on every change and a ping every 10 seconds.
+    # DE: Server-Sent-Events-Stream: sendet den Zustand bei jeder Änderung und alle 10 Sekunden einen Ping.
     def _events(self, qs, dev):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
@@ -1521,6 +1707,8 @@ class Handler(BaseHTTPRequestHandler):
             store.publish()
 
 
+# EN: Runs the server on its own (without the desktop app).
+# DE: Startet nur den Server (ohne Desktop-App).
 def main():
     start_background()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
