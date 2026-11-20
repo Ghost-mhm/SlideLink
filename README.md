@@ -27,6 +27,11 @@ keeps PC and phone in sync live, and lets Claude build presentations directly in
 - Battery friendly: still preview by default, 12 fps when live, dims while presenting, pauses in the background
 - Updates itself from your PC
 
+## Beta 1.1.0: audience, live polls, present in group
+- **Audience link** (`/live?k=…`): viewers scan a QR code (also shown big on the presentation screen) and follow the current slide live on their phone, in the browser. Watch only: no control, no speaker notes. *New link* invalidates the old one.
+- **Live polls:** start a poll with 2-4 answers from the phone remote (👥 Live). The audience votes on the audience page (one vote per phone); results can be shown live as bars on the presentation screen.
+- **Present in group:** start a group session on the PC or your admin phone. Co-presenters scan a QR code and join with their name, in the browser (also iPhone) or the Android app. They control the talk only (slides, polls, notes, *I'm presenting*), never edit or switch presentations, and are disconnected when the session ends (*End group session* on PC or admin phone, or automatically after 4 hours). Nothing stays linked.
+
 ## Install
 
 ### Windows

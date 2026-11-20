@@ -1,1 +1,1 @@
-Learns your PC's addresses by itself (nothing built in). First start asks for the PC address.
+Present in group: join someone's group session from a QR code, in the app or the browser.

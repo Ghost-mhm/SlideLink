@@ -93,6 +93,7 @@ function initLibrary() {
         <div class="up-status on" id="watchStatus" style="display:none"></div>
         <input type="file" id="uploadInput" multiple hidden
           accept=".pptx,.ppt,.odp,.ppsx,.pps,.potx,.zip,.json,.html,.htm,.png,.jpg,.jpeg,.webp,.gif">
+        <button id="audBtn" style="width:100%">👥 Group & audience <small class="beta">BETA</small></button>
         <button id="devBtn" style="width:100%">⚙ Linked devices <span class="count" id="devCount"></span></button>
       </div>
     </aside>
@@ -103,6 +104,7 @@ function initLibrary() {
   $('#libSearch').oninput = e => { libQuery = e.target.value.toLowerCase(); renderLibrary(); };
   $('#homeBtn').onclick = () => selectDeck(null);
   $('#devBtn').onclick = openConnect;
+  $('#audBtn').onclick = openAudience;
   $('#newDeck').onclick = async () => {
     const title = prompt('Name of the new presentation', 'Untitled presentation');
     if (title === null) return;

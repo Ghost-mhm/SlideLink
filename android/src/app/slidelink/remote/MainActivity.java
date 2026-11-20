@@ -4,7 +4,9 @@ package app.slidelink.remote;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -73,6 +75,7 @@ public class MainActivity extends Activity {
     // EN: Looks again for the best way to the PC after a short delay (network changed).
     // DE: Sucht nach kurzer Pause erneut den besten Weg zum PC (Netz hat sich geändert).
     private void scheduleRecheck(long delayMs) {
+        if (groupMode) return;              // in a group session the address is fixed by the link
         ui.removeCallbacks(recheck);
         ui.postDelayed(recheck, delayMs);
     }
@@ -89,6 +92,7 @@ public class MainActivity extends Activity {
         }
     }
     private Updater updater;
+    private boolean groupMode;          // joined someone's group session (co-presenter), not linked to a PC
 
     /** Used by the SlideLink page (⚙ panel): app version + "Check for updates". */
     // EN: JavaScript bridge (window.SlideLinkApp): the page and the app exchange version, login, addresses and state.
@@ -96,6 +100,15 @@ public class MainActivity extends Activity {
     final class Bridge {
         @JavascriptInterface public String version() { return Updater.installedName(MainActivity.this); }
         @JavascriptInterface public void checkUpdate() { ui.post(() -> updater.check(base, true)); }
+        /** Group session over: back to this phone's own SlideLink (or the welcome screen). */
+        @JavascriptInterface public void leaveGroup() {
+            ui.post(() -> {
+                prefs.edit().remove("group_base").remove("group_key").apply();
+                groupMode = false;
+                base = null;
+                findPc();
+            });
+        }
         /** The page says whether a presentation is running: only then the screen stays on (and dims when idle). */
         @JavascriptInterface public void setPresenting(boolean on) { ui.post(() -> applyPresenting(on)); }
         /** The PC's current home-Wi-Fi addresses (they can change), used to switch to Wi-Fi automatically. */
@@ -175,7 +188,10 @@ public class MainActivity extends Activity {
 
         root.addView(buildOffline(), new FrameLayout.LayoutParams(-1, -1));
         setContentView(root);
-        findPc();
+        // opened from a group link? (or still in a group session from before) else: find this phone's PC
+        if (!handleGroupIntent(getIntent())) {
+            if (prefs.getString("group_base", null) != null) enterGroup(); else findPc();
+        }
         // switch automatically when the network changes (home Wi-Fi <-> mobile data / other Wi-Fi)
         netCallback = new ConnectivityManager.NetworkCallback() {
             @Override public void onAvailable(Network n) { ui.post(() -> scheduleRecheck(1500)); }
@@ -209,7 +225,41 @@ public class MainActivity extends Activity {
 
     // EN: Tries the addresses one by one and opens the first that answers; asks on the very first start.
     // DE: Probiert die Adressen nacheinander und öffnet die erste, die antwortet; fragt beim allerersten Start.
+    // EN: Opens a group link (slidelink://group?u=…&k=…) from the join page: co-presenter mode, no linking.
+    // DE: Öffnet einen Gruppen-Link (slidelink://group?u=…&k=…) von der Beitrittsseite: Mitvortragenden-Modus, ohne Verknüpfen.
+    private boolean handleGroupIntent(Intent intent) {
+        Uri d = intent == null ? null : intent.getData();
+        if (d == null || !"slidelink".equals(d.getScheme()) || !"group".equals(d.getHost())) return false;
+        String u = d.getQueryParameter("u"), k = d.getQueryParameter("k");
+        if (u == null || k == null || k.isEmpty() || !(u.startsWith("https://") || u.startsWith("http://"))) return false;
+        prefs.edit().putString("group_base", u.replaceAll("/+$", "")).putString("group_key", k).apply();
+        enterGroup();
+        return true;
+    }
+
+    // EN: Shows the group page of the session (name, then the co-presenter remote).
+    // DE: Zeigt die Gruppenseite der Sitzung (Name, dann die Mitvortragenden-Fernbedienung).
+    private void enterGroup() {
+        String gb = prefs.getString("group_base", null), gk = prefs.getString("group_key", null);
+        if (gb == null || gk == null) { groupMode = false; findPc(); return; }
+        groupMode = true;
+        ui.removeCallbacks(recheck);
+        ui.removeCallbacks(autoRetry);
+        base = gb;
+        offline.setVisibility(View.GONE);
+        web.setVisibility(View.VISIBLE);
+        web.loadUrl(gb + "/group?k=" + Uri.encode(gk));
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleGroupIntent(intent);
+    }
+
     private void findPc() {
+        if (groupMode) { enterGroup(); return; }   // a group session keeps its own address
         if (searching) return;
         searching = true;
         ui.removeCallbacks(autoRetry);

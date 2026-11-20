@@ -5,7 +5,10 @@
 
 const MODE = location.pathname.startsWith('/present') ? 'present'
   : location.pathname.startsWith('/remote') ? 'remote'
+  : location.pathname.startsWith('/group') ? 'group'
   : location.pathname.startsWith('/edit') ? 'editor' : 'library';
+const GROUP_KEY = 'slidelink-group';                 // {k, token, name} of a joined group session
+const groupLogin = () => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) || 'null'); } catch (_) { return null; } };
 const CLIENT = Math.random().toString(36).slice(2, 10);
 // tell the PC at once when this window closes, so phones see it immediately
 addEventListener('pagehide', () => {
@@ -17,7 +20,7 @@ let DEVICE = 'PC';     // how this device is named in "last edited by"; set from
 let ME = null;         // {id, name, type} of this device
 const TOKEN_KEY = 'slidelink-token';
 // Android app: the app keeps the login for every address (HTTPS, Tailscale, Wi-Fi)
-if (window.SlideLinkApp && SlideLinkApp.getToken) {
+if (MODE !== 'group' && window.SlideLinkApp && SlideLinkApp.getToken) {
   try {
     const mine = localStorage.getItem('slidelink-token'), kept = SlideLinkApp.getToken();
     if (mine && mine !== kept) SlideLinkApp.setToken(mine);
@@ -40,7 +43,8 @@ function sendLanToApp() {
 }
 // EN: Header with the device token for API calls.
 // DE: Header mit dem Geräte-Token für API-Aufrufe.
-const authHeaders = () => (localStorage.getItem(TOKEN_KEY) ? { 'X-SlideLink-Token': localStorage.getItem(TOKEN_KEY) } : {});
+const authHeaders = () => MODE === 'group'
+  ? (groupLogin() ? { 'X-SlideLink-Group': groupLogin().token } : {}) : (localStorage.getItem(TOKEN_KEY) ? { 'X-SlideLink-Token': localStorage.getItem(TOKEN_KEY) } : {});
 const $ = (s, r = document) => r.querySelector(s);
 
 const STATUS = { 'draft': 'Draft', 'in-progress': 'In progress', 'review': 'Review', 'done': 'Done' };
@@ -139,7 +143,7 @@ function post(path, body) {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() }, body: JSON.stringify(body),
   }).then(async r => {
     const j = await r.json().catch(() => ({ ok: false, error: 'Bad response' }));
-    if (r.status === 401 && path !== '/api/pair') { showLinkScreen(); return j; }
+    if (r.status === 401 && path !== '/api/pair') { MODE === 'group' ? showGroupEnded() : showLinkScreen(); return j; }
     if (!j.ok) toast(j.error);
     return j;
   }).catch(e => { toast('Not connected: ' + e.message); return { ok: false }; });
@@ -181,7 +185,7 @@ function connect() {
   clearTimeout(retryT);
   if (es) es.close();
   const appv = window.SlideLinkApp && SlideLinkApp.version ? '&appv=' + encodeURIComponent(SlideLinkApp.version()) : '';
-  es = new EventSource(`/events?role=${MODE}&client=${CLIENT}${appv}`);
+  es = new EventSource(`/events?role=${MODE === 'group' ? 'remote' : MODE}&client=${CLIENT}${appv}`);
   lastBeat = Date.now();
   es.onopen = () => { retryDelay = 1000; sendLanToApp(); };
   es.onmessage = e => {
@@ -213,6 +217,7 @@ function connect() {
   };
   es.addEventListener('ping', () => { lastBeat = Date.now(); });
   es.addEventListener('unlinked', () => {
+    if (MODE === 'group') return showGroupEnded();
     localStorage.removeItem(TOKEN_KEY);
     if (window.SlideLinkApp && SlideLinkApp.setToken) SlideLinkApp.setToken('');
     showLinkScreen('This device was unlinked from the PC.');
@@ -229,7 +234,7 @@ async function scheduleReconnect() {
   clearTimeout(retryT);
   retryT = setTimeout(async () => {
     const who = await whoami();
-    if (who && !who.linked) return showLinkScreen();
+    if (who && !who.linked) return MODE === 'group' ? showGroupEnded() : showLinkScreen();
     connect();
   }, retryDelay);
   retryDelay = Math.min(retryDelay * 1.6, 8000);
@@ -324,6 +329,161 @@ function checkPhoneUpdate() {
     <button class="upd-x" title="Later">Later</button>`;
   el.querySelector('.upd-x').onclick = () => { localStorage.setItem('sl-upd-dismissed', latest); el.remove(); };
   document.body.appendChild(el);
+}
+
+// EN: The group link for co-presenters (HTTPS if available).
+// DE: Der Gruppen-Link für Mitvortragende (wenn möglich HTTPS).
+function groupUrl() {
+  const g = S && S.group;
+  return g && g.key ? ((S.audience && S.audience.url) || location.origin) + '/group?k=' + encodeURIComponent(g.key) : '';
+}
+
+// EN: Join screen of a group session: name, then continue in the browser or open the SlideLink app.
+// DE: Beitrittsbildschirm einer Gruppen-Sitzung: Name, dann im Browser weiter oder die SlideLink-App öffnen.
+function showGroupJoin(message) {
+  stopped = true;
+  if (es) es.close();
+  const k = new URLSearchParams(location.search).get('k') || '';
+  const inApp = !!window.SlideLinkApp;
+  // iPhone/iPad: no app (Android only). Any other phone or tablet gets the app button, even if its browser hides 'Android'
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isPhone = !isIOS && (/Android|Mobile|Linux/.test(navigator.userAgent) || navigator.maxTouchPoints > 1 || matchMedia('(pointer: coarse)').matches);
+  const appLink = `intent://group?u=${encodeURIComponent(location.origin)}&k=${encodeURIComponent(k)}` +
+    `#Intent;scheme=slidelink;package=app.slidelink.remote;S.browser_fallback_url=${encodeURIComponent(location.origin + '/SlideLink.apk')};end`;
+  $('#conn').classList.add('ok');
+  $('#app').innerHTML = `
+    <div class="link-screen">
+      <img src="/icon.svg" alt="" width="72" height="72">
+      <h2>Present together</h2>
+      ${message ? `<p class="link-msg">${esc(message)}</p>` : ''}
+      <p class="muted">You were invited to co-present. You can move through the slides, start polls and see the notes, but not change the presentation.</p>
+      <form id="groupForm">
+        <label for="gName">Your name</label>
+        <input id="gName" maxlength="30" autocomplete="name" placeholder="e.g. Anna" value="${esc((groupLogin() || {}).name || '')}" required>
+        <button class="primary" style="width:100%;margin-top:16px;padding:14px">${inApp ? 'Join' : 'Continue in the browser'}</button>
+        <p class="link-err" id="gErr"></p>
+      </form>
+      ${inApp ? '' : isIOS ? `<p class="muted" style="font-size:12px;margin-top:14px">The SlideLink app is only available for Android. On iPhone everything works right here in the browser.</p>`
+        : isPhone ? `<a class="get-app" href="${appLink}">📱 Open in the SlideLink app</a>
+        <p class="muted" style="font-size:12px;margin-top:6px">Android: opens the app. Not installed? The download starts instead.</p>` : ''}
+    </div>`;
+  $('#groupForm').onsubmit = async e => {
+    e.preventDefault();
+    const r = await fetch('/api/group/join', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ k, name: $('#gName').value }) }).then(r => r.json()).catch(() => ({ ok: false, error: 'Not connected' }));
+    if (!r.ok) { $('#gErr').textContent = r.error || 'Could not join.'; return; }
+    localStorage.setItem(GROUP_KEY, JSON.stringify({ k, token: r.token, name: r.name }));
+    location.reload();
+  };
+}
+
+// EN: The group session ended (or this person was removed): nothing stays linked.
+// DE: Die Gruppen-Sitzung ist vorbei (oder die Person wurde entfernt): nichts bleibt verknüpft.
+function showGroupEnded() {
+  stopped = true;
+  if (es) es.close();
+  localStorage.removeItem(GROUP_KEY);
+  document.querySelectorAll('.modal-back').forEach(m => m.remove());
+  $('#conn').classList.add('ok');
+  const leave = window.SlideLinkApp && SlideLinkApp.leaveGroup;
+  $('#app').innerHTML = `<div class="link-screen"><img src="/icon.svg" alt="" width="72" height="72">
+    <h2>The group session has ended</h2><p class="muted">Thanks for presenting! You are no longer connected to this presentation.</p>
+    ${leave ? '<button class="primary" id="leaveBtn" style="width:100%;padding:14px">Back to my SlideLink</button>' : ''}</div>`;
+  if (leave) $('#leaveBtn').onclick = () => SlideLinkApp.leaveGroup();
+}
+
+// EN: Admin controls for the group session (PC popup and admin phone): start, QR, members, end.
+// DE: Admin-Steuerung der Gruppen-Sitzung (PC-Popup und Admin-Handy): starten, QR, Mitglieder, beenden.
+function groupAdminHTML() {
+  const g = (S && S.group) || {};
+  if (!g.active) return `<h4>🎤 Present in group <small class="beta">BETA</small></h4>
+    <p class="muted">Co-presenters join with a QR code, in the browser or the app. They control the talk only and are disconnected when the session ends.</p>
+    <button class="primary" data-grp="start" style="width:100%">Start group session</button>`;
+  const left = Math.max(0, Math.round((g.expires - nowSec()) / 60));
+  return `<h4>🎤 Group session <small class="beta">BETA</small></h4>
+    <p class="muted">${g.members.length} joined · ends by itself in ${Math.floor(left / 60)}h ${left % 60}min</p>
+    <div class="grp-members">${g.members.map(m => `<div class="grp-m"><span class="${m.online ? 'on-dot' : 'off-dot'}"></span>${esc(m.name)}
+      <button class="link danger" data-grp="kick" data-id="${esc(m.id)}">remove</button></div>`).join('') || '<p class="muted">Nobody yet.</p>'}</div>
+    <div class="lv-row"><button data-grp="qr" class="${g.qr ? 'on' : ''}">${g.qr ? 'Hide QR on screen' : '📺 Show QR on screen'}</button>
+      <button data-grp="copy">Copy link</button></div>
+    <button class="danger-btn" data-grp="end" style="width:100%">End group session</button>`;
+}
+async function groupAction(kind, el) {
+  if (kind === 'start') return api({ op: 'group_start' });
+  if (kind === 'qr') return api({ op: 'group_qr', on: !(S.group && S.group.qr) });
+  if (kind === 'copy') return navigator.clipboard.writeText(groupUrl()).then(() => toast('Group link copied'));
+  if (kind === 'kick') return api({ op: 'group_kick', member: el.dataset.id });
+  if (kind === 'end' && confirm('End the group session? Everyone in the group is disconnected.')) return api({ op: 'group_end' });
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-grp]'); if (b) { e.stopPropagation(); groupAction(b.dataset.grp, b); } }, true);
+
+// EN: The audience link (HTTPS if available) for viewers' phones.
+// DE: Der Publikums-Link (wenn möglich HTTPS) für die Handys der Zuschauer.
+function audienceUrl() {
+  const a = S && S.audience;
+  return a ? (a.url || location.origin) + '/live?k=' + encodeURIComponent(a.key) : '';
+}
+
+// EN: Poll results as HTML bars (used on the presentation screen and the phone).
+// DE: Umfrageergebnisse als HTML-Balken (auf der Leinwand und am Handy).
+function pollBarsHTML(p) {
+  return p.options.map((o, n) => {
+    const pct = p.total ? Math.round(100 * p.counts[n] / p.total) : 0;
+    return `<div class="pbar"><div class="pbar-t"><span>${esc(o)}</span><b>${pct}% · ${p.counts[n]}</b></div>
+      <div class="pbar-track"><i style="width:${pct}%"></i></div></div>`;
+  }).join('');
+}
+
+// EN: Presentation screen: big audience QR, live poll results and the current speaker on top of the slide.
+// DE: Leinwand: großer Publikums-QR-Code, Live-Umfrageergebnis und wer spricht, über der Folie.
+function renderLiveOverlay() {
+  let ov = document.getElementById('liveOv');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'liveOv'; document.body.appendChild(ov); }
+  const a = S.audience || {}, p = S.poll;
+  let html = '';
+  if (a.qr && a.key) html += `<div class="lo-card lo-qr"><div class="lo-qrbox">${QR.svg(audienceUrl(), 360)}</div>
+      <div><h2>Follow live on your phone</h2><p>Scan the code to see the slides and vote in polls.</p>
+      <p class="lo-small">${a.count || 0} watching</p></div></div>`;
+  if (S.group && S.group.qr && S.group.key) html += `<div class="lo-card lo-qr lo-grp"><div class="lo-qrbox">${QR.svg(groupUrl(), 360)}</div>
+      <div><h2>Co-presenters: join here</h2><p>Scan to control the slides together (browser or app).</p>
+      <p class="lo-small">${S.group.members.length} joined</p></div></div>`;
+  if (p && p.show) html += `<div class="lo-card lo-poll"><h2>📊 ${esc(p.question)}</h2>${pollBarsHTML(p)}
+      <p class="lo-small">${p.total} vote${p.total === 1 ? '' : 's'}${p.open ? ' · voting is open' : ' · closed'}</p></div>`;
+  if (S.speaker) html += `<div class="lo-speaker">🎤 ${esc(S.speaker.name)}</div>`;
+  if (ov._h !== html) { ov.innerHTML = html; ov._h = html; }
+}
+
+// EN: PC: the audience link as a popup with QR code, copy, "show on screen" and a new link.
+// DE: PC: der Publikums-Link als Popup mit QR-Code, Kopieren, "auf Leinwand zeigen" und neuem Link.
+function openAudience() {
+  if (!S || !S.audience) return;
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  const draw = () => `<div class="modal qr-modal">
+    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">👥 Group & audience <small class="beta">BETA</small></h3>
+      <button class="close" data-x style="flex:none" aria-label="Close">✕</button></div>
+    <div class="lv-sec grp-sec" id="pcGroup">${groupAdminHTML()}</div>
+    <h4 style="margin:6px 0 0;text-align:left">👥 Audience link</h4>
+    <p class="muted" style="margin:8px 0 14px">Viewers scan this and see the current slide live on their phone and can vote in polls.
+      Watch only: no control, no notes. ${S.audience.count || 0} watching now.</p>
+    <div class="qr-box">${QR.svg(audienceUrl(), 240)}</div>
+    <div class="row" style="gap:10px;margin-top:16px">
+      <button class="primary" data-show style="flex:1">${S.audience.qr ? 'Hide QR on screen' : '📺 Show QR on screen'}</button>
+      <button data-copy style="flex:1">Copy link</button>
+    </div>
+    <button class="link" data-new style="margin-top:10px">New link (the old one stops working)</button>
+  </div>`;
+  back.innerHTML = draw();
+  document.body.appendChild(back);
+  const live = setInterval(() => { if (!back.isConnected) return clearInterval(live); setHTML(back.querySelector('#pcGroup'), groupAdminHTML()); }, 1000);
+  back.onclick = async e => {
+    if (e.target === back || e.target.closest('[data-x]')) return back.remove();
+    if (e.target.closest('[data-copy]')) { navigator.clipboard.writeText(audienceUrl()); e.target.textContent = 'Copied ✓'; return; }
+    if (e.target.closest('[data-show]')) { await api({ op: 'join_qr', on: !S.audience.qr }); back.remove(); return; }
+    if (e.target.closest('[data-new]') && confirm('Make a new audience link? Everyone watching with the old link is disconnected.')) {
+      await api({ op: 'audience_new' }); setTimeout(() => { back.innerHTML = draw(); }, 400);
+    }
+  };
 }
 
 /* "Linked devices" on the PC: with no phone connected, first offer the app download as a QR code. */
@@ -914,6 +1074,7 @@ function renderPresent() {
   $('#black').classList.toggle('on', !!S.present.blackout);
   $('#pcount').textContent = list.length ? `${i + 1} / ${list.length}` : '';
   document.title = `${i + 1}/${list.length} · ${S.deck.title}`;
+  renderLiveOverlay();
 }
 
 /* PHONE REMOTE: see remote.js */
@@ -930,6 +1091,19 @@ function render() {
   renderDevices();
 }
 (async function boot() {
+  if (MODE === 'group') {                      // co-presenter: joined with the group link, not linked
+    const k = new URLSearchParams(location.search).get('k') || '';
+    const g = groupLogin();
+    if (!g || g.k !== k) return showGroupJoin();
+    const who = await whoami();
+    if (!who || !who.linked || !who.device || who.device.type !== 'group') {
+      localStorage.removeItem(GROUP_KEY);
+      return showGroupJoin(who ? 'This group session has ended or you were removed. Join again if it is still running.' : 'Cannot reach the presentation right now.');
+    }
+    ME = who.device; DEVICE = ME.name;
+    initRemote();
+    return connect();
+  }
   let who = await whoami();
   while (!who) {                       // PC not reachable yet: keep trying
     $('#conn').textContent = 'Waiting for the SlideLink PC…'; $('#conn').classList.remove('ok');

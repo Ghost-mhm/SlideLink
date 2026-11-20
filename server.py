@@ -313,7 +313,18 @@ COOKIE = "sl_token"
 COOKIE_AGE = 10 * 365 * 24 * 3600
 HOST = {"id": "host", "name": "This PC", "type": "host"}
 REMOTE_ONLY = {"phone", "tablet"}          # these devices control presentations but never edit them
-REMOTE_OPS = {"next", "prev", "goto", "blackout", "open_deck", "show_on_pc", "open_on_pc", "close_on_pc", "resync"}
+REMOTE_OPS = {"next", "prev", "goto", "blackout", "open_deck", "show_on_pc", "open_on_pc", "close_on_pc", "resync",
+              "poll_start", "poll_show", "poll_end", "poll_clear", "speaker_me", "speaker_set", "audience_new", "join_qr",
+              "group_start", "group_end", "group_kick", "group_qr"}
+# EN: Group members (joined with the group link, not linked): control the talk only, never edit, switch decks or manage.
+# DE: Gruppenmitglieder (über den Gruppen-Link, nicht verknüpft): steuern nur den Vortrag, nie bearbeiten, Deck wechseln oder verwalten.
+GROUP_OPS = {"next", "prev", "goto", "blackout", "resync", "poll_start", "poll_show", "poll_end", "poll_clear",
+             "speaker_me", "speaker_set", "join_qr"}
+GROUP_COOKIE = "sl_group"
+GROUP_HOURS = 4
+# EN: Viewers of the audience link: see the current slide live and vote in polls, nothing else.
+# DE: Zuschauer über den Publikums-Link: sehen die aktuelle Folie live und stimmen ab, sonst nichts.
+AUDIENCE = {"id": "audience", "name": "Audience", "type": "audience"}
 ON_SHOW_PC = None                          # set by the desktop app: opens the presenter window on the PC
 ON_OPEN_PC = None                          # set by the desktop app: opens the SlideLink app window on the PC
 ON_CLOSE_PC = None                         # set by the desktop app: closes the SlideLink windows on the PC
@@ -686,6 +697,11 @@ class Store:
         self.present = {"index": 0, "step": 0, "blackout": False, "changed_at": time.time()}
         self.activity = []
         self.claude = {"text": "", "slide_id": None, "at": 0}
+        self.poll = None        # live poll: {id, question, options, votes {voter: option}, open, show}
+        self.speaker = None     # who presents right now (several presenters): {"name", "at"}
+        self.join_qr = False    # show the big audience QR code on the presentation screen
+        self.group = None       # group session: {key, expires, members {id: {name, token_hash, joined}}}
+        self.group_qr = False   # show the big group QR code on the presentation screen
         try:
             self.deck = library.load(library.meta.get("active"))
         except ValueError:
@@ -707,6 +723,75 @@ class Store:
 
     # EN: The complete state as sent to every screen.
     # DE: Der komplette Zustand, wie er an jeden Bildschirm geschickt wird.
+    def group_active(self):
+        """The running group session (ends by itself after GROUP_HOURS)."""
+        if self.group and time.time() > self.group["expires"]:
+            self.group = None
+            self.group_qr = False
+        return self.group
+
+    # EN: Finds the group member that belongs to a token (or None).
+    # DE: Findet das Gruppenmitglied zu einem Token (oder None).
+    def group_member(self, token):
+        g = self.group_active()
+        if not g or not token:
+            return None
+        h = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        for mid, m in g["members"].items():
+            if secrets.compare_digest(m["token_hash"], h):
+                return {"id": "g:" + mid, "name": m["name"], "type": "group"}
+        return None
+
+    # EN: Group info for admins: link key, end time, members with online state.
+    # DE: Gruppen-Infos für Admins: Link-Schlüssel, Endzeit, Mitglieder mit Online-Status.
+    def group_admin_view(self):
+        g = self.group_active()
+        if not g:
+            return {"active": False, "qr": False}
+        online = {c["device"] for c in self.clients.values()}
+        return {"active": True, "key": g["key"], "expires": g["expires"], "qr": self.group_qr,
+                "members": [{"id": mid, "name": m["name"], "online": ("g:" + mid) in online} for mid, m in g["members"].items()]}
+
+    def audience_key(self):
+        """Secret part of the audience link (kept in library.json; a new one makes old links invalid)."""
+        key = library.meta.get("audience_key")
+        if not key:
+            key = secrets.token_urlsafe(9)
+            library.meta["audience_key"] = key
+            library.set_active(library.meta.get("active"))
+        return key
+
+    # EN: Poll for everyone: question, options and vote counts (never who voted what).
+    # DE: Umfrage für alle: Frage, Antworten und Stimmenzahlen (nie, wer was gewählt hat).
+    def poll_public(self):
+        if not self.poll:
+            return None
+        counts = [0] * len(self.poll["options"])
+        for v in self.poll["votes"].values():
+            counts[v] += 1
+        return {"id": self.poll["id"], "question": self.poll["question"], "options": self.poll["options"],
+                "counts": counts, "total": sum(counts), "open": self.poll["open"], "show": self.poll["show"]}
+
+    # EN: The reduced state for the audience: slides without speaker notes, position, poll, speaker.
+    # DE: Der reduzierte Zustand fürs Publikum: Folien ohne Sprechernotizen, Position, Umfrage, Vortragende.
+    def public_snapshot(self):
+        d = self.deck
+        slides = [{k: s.get(k) for k in ("id", "title", "layout", "html", "content")} for s in d["slides"]]
+        return {"deck": {"id": d["id"], "title": d["title"], "theme": d.get("theme"), "css": d.get("css", ""),
+                         "faces": d.get("faces", []), "slides": slides},
+                "present": self.present, "poll": self.poll_public(), "speaker": self.speaker,
+                "build": app_build(), "server_time": time.time()}
+
+    # EN: The state for group members: like the full state, but without linked devices and group admin data.
+    # DE: Der Zustand für Gruppenmitglieder: wie der volle, aber ohne verknüpfte Geräte und Gruppen-Admin-Daten.
+    def member_snapshot(self):
+        s = self.snapshot()
+        g = self.group_active()
+        s["linked"] = []
+        s["group"] = {"active": bool(g), "member": True,
+                      "names": [m["name"] for m in g["members"].values()] if g else []}
+        return s
+
     def snapshot(self):
         roles = {}
         for c in self.clients.values():
@@ -716,6 +801,9 @@ class Store:
                 "linked": registry.public(self.clients), "library_version": library.version,
                 "build": app_build(),
                 "app_latest": app_latest(),
+                "poll": self.poll_public(), "speaker": self.speaker, "group": self.group_admin_view(),
+                "audience": {"key": self.audience_key(), "url": audience_base(), "qr": self.join_qr,
+                             "count": sum(1 for c in self.clients.values() if c["role"] == "audience")},
                 "pc_windows": {r: sum(1 for c in self.clients.values() if c["device"] == "host" and c["role"] == r)
                                for r in PC_ROLES},
                 "server_time": time.time()}
@@ -727,8 +815,19 @@ class Store:
             self.version += 1
             data = json.dumps({"type": "state", "origin": origin, "state": self.snapshot()},
                               ensure_ascii=False)
+            public = member = None
             for c in list(self.clients.values()):
-                c["q"].put(data)
+                if c["role"] == "audience":           # the audience gets the reduced state only
+                    if public is None:
+                        public = json.dumps({"type": "state", "state": self.public_snapshot()}, ensure_ascii=False)
+                    c["q"].put(public)
+                elif str(c["device"]).startswith("g:"):   # group members: no device list, no group admin data
+                    if member is None:
+                        member = json.dumps({"type": "state", "origin": origin, "state": self.member_snapshot()},
+                                            ensure_ascii=False)
+                    c["q"].put(member)
+                else:
+                    c["q"].put(data)
 
     # EN: Disconnects all live connections of an unlinked device.
     # DE: Trennt alle Live-Verbindungen eines entfernten Geräts.
@@ -889,6 +988,73 @@ class Store:
                 self.present["changed_at"] = time.time()
                 return {"index": self.present["index"], "step": self.present.get("step", 0),
                         "blackout": self.present["blackout"]}, False
+
+            # ---- live polls / several presenters / audience link (beta) ----
+            if kind == "poll_start":
+                question = str(op.get("question") or "").strip()[:200]
+                options = [str(o).strip()[:80] for o in (op.get("options") or []) if str(o).strip()][:4]
+                if not question or len(options) < 2:
+                    raise ValueError("A poll needs a question and 2 to 4 answers")
+                self.poll = {"id": new_id(), "question": question, "options": options, "votes": {},
+                             "open": True, "show": False}
+                self.log(by, f"started a poll: \u201c{question[:60]}\u201d")
+                return {"poll": self.poll["id"]}, False
+            if kind in ("poll_show", "poll_end", "poll_clear"):
+                if kind == "poll_clear":
+                    self.poll = None
+                elif self.poll:
+                    if kind == "poll_show":
+                        self.poll["show"] = bool(op.get("on", True))
+                    else:
+                        self.poll["open"] = False
+                return {}, False
+            if kind == "speaker_set":
+                name = str(op.get("name") or "").strip()[:40]
+                self.speaker = {"name": name, "at": time.time()} if name else None
+                if name:
+                    self.log(by, f"{name} is presenting now")
+                return {}, False
+            if kind == "audience_new":
+                library.meta["audience_key"] = secrets.token_urlsafe(9)
+                library.set_active(library.meta.get("active"))
+                for c in self.clients.values():       # old links stop working at once
+                    if c["role"] == "audience":
+                        c["q"].put(KICK)
+                return {}, False
+            if kind == "join_qr":
+                self.join_qr = bool(op.get("on", True))
+                return {}, False
+            if kind == "group_start":
+                if not self.group_active():
+                    self.group = {"key": secrets.token_urlsafe(9), "expires": time.time() + GROUP_HOURS * 3600, "members": {}}
+                    self.log(by, "started a group session")
+                return {"key": self.group["key"]}, False
+            if kind == "group_end":
+                names = {m["name"] for m in self.group["members"].values()} if self.group else set()
+                if self.group:
+                    self.log(by, "ended the group session")
+                self.group, self.group_qr = None, False
+                if self.speaker and self.speaker.get("name") in names:   # a group member was presenting
+                    self.speaker = None
+                for c in self.clients.values():       # everyone in the group is out at once
+                    if str(c["device"]).startswith("g:"):
+                        c["q"].put(KICK)
+                return {}, False
+            if kind == "group_kick":
+                g = self.group_active()
+                mid = str(op.get("member") or "")
+                if g and mid in g["members"]:
+                    name = g["members"].pop(mid)["name"]
+                    if self.speaker and self.speaker.get("name") == name:   # a removed person no longer presents
+                        self.speaker = None
+                    for c in self.clients.values():
+                        if c["device"] == "g:" + mid:
+                            c["q"].put(KICK)
+                    self.log(by, f"removed {name} from the group")
+                return {}, False
+            if kind == "group_qr":
+                self.group_qr = bool(op.get("on", True)) and bool(self.group_active())
+                return {}, False
 
             if kind == "resync":   # every screen rebuilds its slide views from the current position
                 self.present["resync"] = time.time()
@@ -1062,6 +1228,18 @@ def tailscale():
 
 # EN: Addresses a phone can use to reach this PC (Tailscale and home Wi-Fi).
 # DE: Adressen, über die ein Handy diesen PC erreicht (Tailscale und Heim-WLAN).
+# EN: Base address for the audience link: HTTPS (Tailscale Funnel) if available, checked at most once a minute.
+# DE: Basisadresse für den Publikums-Link: HTTPS (Tailscale Funnel), falls vorhanden, höchstens einmal pro Minute geprüft.
+def audience_base():
+    now = time.time()
+    cache = getattr(audience_base, "_c", None)
+    if not cache or now - cache[0] > 60:
+        ts = tailscale()
+        cache = (now, f"https://{ts['dns']}" if ts.get("running") and ts.get("dns") else "")
+        audience_base._c = cache
+    return cache[1]
+
+
 def phone_urls():
     """Addresses a phone can use, best first."""
     urls = []
@@ -1372,7 +1550,17 @@ class Handler(BaseHTTPRequestHandler):
         dev = registry.by_token(self._token())
         if dev:
             dev["last_seen"] = time.time()
-        return dev
+            return dev
+        # group member? (cookie sl_group or header X-SlideLink-Group)
+        gtok = self.headers.get("X-SlideLink-Group")
+        if not gtok:
+            try:
+                c = SimpleCookie(self.headers.get("Cookie") or "")
+                gtok = c[GROUP_COOKIE].value if GROUP_COOKIE in c else None
+            except CookieError:
+                gtok = None
+        with store.lock:
+            return store.group_member(gtok)
 
     # EN: Cookie header that stores (or clears) the device token for 10 years.
     # DE: Cookie-Header, der das Geräte-Token für 10 Jahre speichert (oder löscht).
@@ -1434,17 +1622,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         p = url.path
-        if p in ("/", "/present", "/remote", "/edit", "/library"):
+        if p in ("/", "/present", "/remote", "/edit", "/library", "/group"):
             return self._file(os.path.join(STATIC, "index.html"))
         if p == "/api/whoami":
             return self._whoami()
+        if p == "/live":
+            return self._file(os.path.join(STATIC, "live.html"))
+        if p == "/events":
+            qs = parse_qs(url.query)
+            if (qs.get("role") or [""])[0] == "audience":
+                if not secrets.compare_digest((qs.get("k") or [""])[0], store.audience_key()):
+                    return self._json({"error": "This audience link is no longer valid."}, 403)
+                return self._events(qs, AUDIENCE)
         if p.startswith("/api/") or p == "/events":
             dev = self.auth()
             if not dev:
                 return self._json({"error": "This device is not linked", "linked": False}, 401)
+            if dev.get("type") == "group" and p.startswith(("/api/library", "/api/info", "/api/watch")):
+                return self._json({"error": "Group members control the presentation only."}, 403)
             if p == "/api/state":
                 with store.lock:
-                    return self._json(store.snapshot())
+                    return self._json(store.member_snapshot() if dev.get("type") == "group" else store.snapshot())
             if p == "/api/library":
                 with store.lock:
                     return self._json({"active": store.deck["id"], "version": library.version,
@@ -1524,6 +1722,23 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": False, "error": "Cross-site request blocked"}, 403)
             if p == "/api/pair":
                 return self._pair(self._body())
+            if p == "/api/group/join":
+                body = self._body()
+                name = re.sub(r"\s+", " ", str(body.get("name") or "")).strip()[:30]
+                with store.lock:
+                    g = store.group_active()
+                    if not g or not secrets.compare_digest(str(body.get("k", "")), g["key"]):
+                        return self._json({"ok": False, "error": "This group session has ended or the link is wrong."}, 403)
+                    if not name:
+                        return self._json({"ok": False, "error": "Please enter your name."}, 400)
+                    mid, token = new_id(), secrets.token_urlsafe(24)
+                    g["members"][mid] = {"name": name, "joined": time.time(),
+                                         "token_hash": hashlib.sha256(token.encode("utf-8")).hexdigest()}
+                    store.log(name, "joined the group")
+                    age = max(60, int(g["expires"] - time.time()))
+                store.publish()
+                return self._json({"ok": True, "token": token, "name": name},
+                                  headers=[("Set-Cookie", f"{GROUP_COOKIE}={token}; Max-Age={age}; Path=/; HttpOnly; SameSite=Lax")])
             if p == "/api/bye":
                 # a window is closing: drop its live connection now (otherwise noticed only at the next ping)
                 client = str(self._body().get("client", ""))[:16]
@@ -1534,6 +1749,25 @@ class Handler(BaseHTTPRequestHandler):
                             store.clients.pop(cid, None)
                     if gone:
                         store.publish()
+                return self._json({"ok": True})
+            if p == "/api/vote":
+                # audience vote: the audience key is the ticket; one vote per viewer (can be changed while open)
+                body = self._body()
+                if not secrets.compare_digest(str(body.get("k", "")), store.audience_key()):
+                    return self._json({"ok": False, "error": "This audience link is no longer valid."}, 403)
+                voter = str(body.get("voter", ""))[:40]
+                with store.lock:
+                    poll = store.poll
+                    if not poll or not poll["open"] or poll["id"] != body.get("poll") or not voter:
+                        return self._json({"ok": False, "error": "This poll is closed."}, 400)
+                    try:
+                        choice = int(body.get("option"))
+                    except (TypeError, ValueError):
+                        choice = -1
+                    if not 0 <= choice < len(poll["options"]):
+                        return self._json({"ok": False, "error": "Unknown answer"}, 400)
+                    poll["votes"][voter] = choice
+                store.publish()
                 return self._json({"ok": True})
             if p == "/api/clientlog":
                 # script errors from a phone/tablet, so a black screen there leaves a trace on the PC
@@ -1637,6 +1871,10 @@ class Handler(BaseHTTPRequestHandler):
     # EN: Runs an operation; phones may only use remote operations.
     # DE: Führt eine Operation aus; Handys dürfen nur Fernbedienungs-Operationen nutzen.
     def _op(self, op, dev):
+        if dev.get("type") == "group" and op.get("op") not in GROUP_OPS:
+            return self._json({"ok": False, "error": "Group members control the presentation only."}, 403)
+        if op.get("op") == "speaker_me":       # "I'm presenting" on a phone: that phone's name
+            op = {"op": "speaker_set", "name": "PC" if dev is HOST else dev["name"]}
         if dev is not HOST:
             op["by"] = dev["name"]  # linked devices are shown by name in the activity feed
             if dev.get("type") in REMOTE_ONLY and op.get("op") not in REMOTE_OPS:

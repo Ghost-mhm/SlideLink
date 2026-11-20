@@ -100,6 +100,20 @@ erlaubt) sowie für PC/Editor: `add_slide`, `update_slide`, `delete_slide`, `dup
 `next`/`prev` senden `from_index`/`from_step` mit; ist die Präsentation inzwischen weiter, antwortet der Server *stale*,
 damit schnelles Tippen auf mehreren Geräten nie versehentlich Folien überspringt.
 
+### Beta-Endpunkte
+| | |
+|---|---|
+| `GET /live?k=…` | Publikumsseite (kein Gerät nötig; der Schlüssel ist die Eintrittskarte) |
+| `GET /events?role=audience&k=…` | Live-Stream fürs Publikum: reduzierter Zustand ohne Notizen, Geräte oder Aktivitäten |
+| `POST /api/vote` | `{k, poll, option, voter}`: eine Stimme pro Zuschauer, änderbar solange offen |
+
+| `GET /group?k=…` | Beitrittsseite der Gruppen-Sitzung (Name, dann Browser oder App) |
+| `POST /api/group/join` | `{k, name}`: tritt der Gruppe bei, liefert ein Mitglieds-Token (Cookie `sl_group`), gültig bis zum Ende der Sitzung |
+
+Gruppenmitglieder sind keine verknüpften Geräte: Sie dürfen nur `next`, `prev`, `goto`, `blackout`, `resync`, Umfrage-Operationen, `speaker_me`, `speaker_set`, `join_qr`. Admins (PC, verknüpfte Handys) haben zusätzlich `group_start`, `group_end`, `group_kick` `{member}`, `group_qr` `{on}`.
+
+Operationen: `poll_start` `{question, options}`, `poll_show` `{on}`, `poll_end`, `poll_clear`, `speaker_me`, `speaker_set` `{name}`, `audience_new`, `join_qr` `{on}` (alle für Handys erlaubt).
+
 ### Sicherheit
 - Verknüpfung: einmaliger 6-stelliger Code, 10 Minuten gültig, nach 8 Fehlversuchen ungültig; Tokens sind 256-Bit-
   Zufallswerte und werden nur als SHA-256-Hash gespeichert; beim Entfernen wird die Live-Verbindung des Geräts sofort getrennt.

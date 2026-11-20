@@ -99,6 +99,20 @@ phones), and for the PC/editor: `add_slide`, `update_slide`, `delete_slide`, `du
 `next`/`prev` carry `from_index`/`from_step`; if the presentation moved on meanwhile the server answers *stale*, so
 fast taps from several devices never skip slides by accident.
 
+### Beta endpoints
+| | |
+|---|---|
+| `GET /live?k=…` | Audience page (no device needed; the key is the ticket) |
+| `GET /events?role=audience&k=…` | Audience live stream: reduced state without notes, devices or activity |
+| `POST /api/vote` | `{k, poll, option, voter}`: one vote per viewer, changeable while open |
+
+| `GET /group?k=…` | Group session join page (name, then browser or app) |
+| `POST /api/group/join` | `{k, name}`: joins the group, returns a member token (cookie `sl_group`) valid until the session ends |
+
+Group members are not linked devices: they may only run `next`, `prev`, `goto`, `blackout`, `resync`, poll ops, `speaker_me`, `speaker_set`, `join_qr`. Admins (PC, linked phones) also have `group_start`, `group_end`, `group_kick` `{member}`, `group_qr` `{on}`.
+
+Operations: `poll_start` `{question, options}`, `poll_show` `{on}`, `poll_end`, `poll_clear`, `speaker_me`, `speaker_set` `{name}`, `audience_new`, `join_qr` `{on}` (all allowed for phones).
+
 ### Security
 - Linking: one-time 6-digit code, valid 10 minutes, invalid after 8 wrong tries; tokens are 256-bit random values,
   stored only as SHA-256 hashes; unlinking kicks the device's live connection at once.
