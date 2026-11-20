@@ -27,6 +27,13 @@ hält PC und Handy live synchron und lässt Claude Präsentationen direkt in der
 - Akkuschonend: standardmäßig Standbild-Vorschau, 12 fps im Live-Modus, dimmt beim Präsentieren, pausiert im Hintergrund
 - Aktualisiert sich selbst über deinen PC
 
+## Beta 1.2.1: Sprachen, Anzeige, Einstellungen
+- **Sprachen:** Englisch und Deutsch. Der Admin wählt die Sprache am PC (⚙ Einstellungen), und jeder Bildschirm folgt ihr live: PC, Handys, Mitvortragende, Publikum und die Android-App. Gäste können ihre eigene wählen.
+- **Anzeige:** hell, dunkel oder wie das System, pro Gerät (⚙ Einstellungen).
+- **Einstellungen** hinter einem Zahnrad oben in der Bibliothek, auch am Handy erreichbar (🔗 Verknüpfte Geräte).
+- **Bibliothek:** „＋ Präsentation hinzufügen“ (PowerPoint, Deck-.zip, HTML, PDF-Doc, Bilder) ersetzt „Neue Präsentation“; jede Kachel hat ein ⋯-Menü (Titel und Sprechernotizen bearbeiten, duplizieren, löschen); der Sync-Status ist ein kleines Abzeichen am Ordner-Knopf.
+- **Neues Logo** in hoher Auflösung; Verknüpfte Geräte hat jetzt ein 🔗-Ketten-Symbol.
+
 ## Beta 1.1.0: Publikum, Live-Umfragen, Präsentieren in der Gruppe
 - **Publikums-Link** (`/live?k=…`): Zuschauer scannen einen QR-Code (auch groß auf der Leinwand) und sehen die aktuelle Folie live im Browser ihres Handys. Nur ansehen: keine Steuerung, keine Sprechernotizen. *New link* macht den alten Link ungültig.
 - **Live-Umfragen:** Am Handy (👥 Live) eine Umfrage mit 2-4 Antworten starten. Das Publikum stimmt auf der Publikumsseite ab (eine Stimme pro Handy); das Ergebnis lässt sich live als Balken auf der Leinwand zeigen.

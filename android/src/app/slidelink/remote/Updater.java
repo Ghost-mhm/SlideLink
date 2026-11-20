@@ -91,18 +91,18 @@ final class Updater {
                 if (act.isFinishing()) return;
                 int have = installedVersion(act);
                 if (info == null || info.optInt("versionCode") <= have) {
-                    if (manual) toast(info == null ? "Could not check for updates." :
-                            "SlideLink app is up to date (" + installedName(act) + ").");
+                    if (manual) toast(info == null ? L.t("Could not check for updates.", "Konnte nicht nach Updates suchen.") :
+                            L.t("SlideLink app is up to date (", "SlideLink-App ist aktuell (") + installedName(act) + ").");
                     return;
                 }
                 String name = info.optString("versionName", "new");
                 String notes = info.optString("notes", "");
                 new AlertDialog.Builder(act)
-                        .setTitle("Update available: " + name)
-                        .setMessage("You have " + installedName(act) + "." + (notes.isEmpty() ? "" : "\n\n" + notes)
-                                + "\n\nDownload it from your PC and install now?")
-                        .setPositiveButton("Update", (d, w) -> download(base + info.optString("url", "/SlideLink.apk")))
-                        .setNegativeButton("Later", null)
+                        .setTitle(L.t("Update available: ", "Update verf\u00fcgbar: ") + name)
+                        .setMessage(L.t("You have ", "Du hast ") + installedName(act) + "." + (notes.isEmpty() ? "" : "\n\n" + notes)
+                                + L.t("\n\nDownload it from your PC and install now?", "\n\nJetzt von deinem PC laden und installieren?"))
+                        .setPositiveButton(L.t("Update", "Aktualisieren"), (d, w) -> download(base + info.optString("url", "/SlideLink.apk")))
+                        .setNegativeButton(L.t("Later", "Sp\u00e4ter"), null)
                         .show();
             });
         }).start();
@@ -114,18 +114,18 @@ final class Updater {
         if (Build.VERSION.SDK_INT >= 26 && !act.getPackageManager().canRequestPackageInstalls()) {
             // Android asks once: "Allow SlideLink to install apps"
             new AlertDialog.Builder(act)
-                    .setTitle("One-time permission")
-                    .setMessage("Android needs your OK once so SlideLink can install its own updates. "
-                            + "Switch on \"Allow from this source\", come back, and press Update again.")
-                    .setPositiveButton("Open settings", (d, w) -> act.startActivity(
+                    .setTitle(L.t("One-time permission", "Einmalige Erlaubnis"))
+                    .setMessage(L.t("Android needs your OK once so SlideLink can install its own updates. ", "Android braucht einmal dein OK, damit SlideLink seine Updates selbst installieren kann. ")
+                            + L.t("Switch on \"Allow from this source\", come back, and press Update again.", "Schalte \"Aus dieser Quelle zulassen\" ein, komm zur\u00fcck und tippe erneut auf Aktualisieren."))
+                    .setPositiveButton(L.t("Open settings", "Einstellungen \u00f6ffnen"), (d, w) -> act.startActivity(
                             new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                     Uri.parse("package:" + act.getPackageName()))))
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(L.t("Cancel", "Abbrechen"), null)
                     .show();
             return;
         }
         busy = true;
-        toast("Downloading the update from your PC…");
+        toast(L.t("Downloading the update from your PC…", "Update wird von deinem PC geladen…"));
         new Thread(() -> {
             try {
                 byte[] apk = get(url, 50_000_000);
@@ -145,7 +145,7 @@ final class Updater {
                     s.commit(PendingIntent.getBroadcast(act, id, i, flags).getIntentSender());
                 }
             } catch (Exception e) {
-                ui.post(() -> toast("Update failed: " + e.getMessage()));
+                ui.post(() -> toast(L.t("Update failed: ", "Update fehlgeschlagen: ") + e.getMessage()));
             } finally {
                 busy = false;
             }
@@ -172,7 +172,7 @@ final class Updater {
                 try { act.unregisterReceiver(this); } catch (Exception ignored) { }
                 if (status != PackageInstaller.STATUS_SUCCESS) {
                     String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
-                    toast("Update not installed" + (msg != null ? ": " + msg : "."));
+                    toast(L.t("Update not installed", "Update nicht installiert") + (msg != null ? ": " + msg : "."));
                 }
             }
         };

@@ -27,6 +27,13 @@ keeps PC and phone in sync live, and lets Claude build presentations directly in
 - Battery friendly: still preview by default, 12 fps when live, dims while presenting, pauses in the background
 - Updates itself from your PC
 
+## Beta 1.2.1: languages, appearance, settings
+- **Languages:** English and German. The admin picks the language on the PC (⚙ Settings) and every screen follows it live: PC, phones, co-presenters, audience and the Android app. Guests can choose their own.
+- **Appearance:** light, dark or like the system, per device (⚙ Settings).
+- **Settings** behind a gear at the top of the library, also reachable on the phone (🔗 Linked devices).
+- **Library:** "＋ Add presentation" (PowerPoint, deck .zip, HTML, PDF doc, pictures) replaces "New presentation"; every tile has a ⋯ menu (edit title and speaker notes, duplicate, delete); the sync state is a small badge on the folder button.
+- **New logo** in high resolution; Linked devices now uses a 🔗 chain icon.
+
 ## Beta 1.1.0: audience, live polls, present in group
 - **Audience link** (`/live?k=…`): viewers scan a QR code (also shown big on the presentation screen) and follow the current slide live on their phone, in the browser. Watch only: no control, no speaker notes. *New link* invalidates the old one.
 - **Live polls:** start a poll with 2-4 answers from the phone remote (👥 Live). The audience votes on the audience page (one vote per phone); results can be shown live as bars on the presentation screen.

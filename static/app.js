@@ -194,6 +194,7 @@ function connect() {
     if (m.type !== 'state') return;
     const prev = S;
     S = m.state;
+    I18N.fromServer(S.lang);            // the admin's language (or this guest's own choice)
     // SlideLink was updated on the PC: reload this window (it comes back at the same slide)
     if (window.__build && S.build && S.build !== window.__build && !document.querySelector('.modal-back')) {
       return location.reload();
@@ -267,7 +268,7 @@ function showLinkScreen(message) {
       <img src="/icon.svg" alt="" width="72" height="72">
       <h2>Link this ${KIND} to SlideLink</h2>
       ${message ? `<p class="link-msg">${esc(message)}</p>` : ''}
-      <p class="muted">You only do this once. On your PC open SlideLink → <b>⚙ Linked devices</b> → <b>Link a new device</b>, then type the code shown there.</p>
+      <p class="muted">You only do this once. On your PC open SlideLink → <b>🔗 Linked devices</b> → <b>Link a new device</b>, then type the code shown there.</p>
       <form id="linkForm">
         <label for="code">Link code</label>
         <input id="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="000000" required>
@@ -486,6 +487,42 @@ function openAudience() {
   };
 }
 
+// EN: General settings (gear at the top of the library). New settings are added here as further sections.
+// DE: Allgemeine Einstellungen (Zahnrad oben in der Bibliothek). Neue Einstellungen kommen hier als weitere Bereiche dazu.
+function openSettings() {
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.innerHTML = `<div class="modal settings-modal">
+    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">⚙ Settings</h3>
+      <button class="close" data-x style="flex:none" aria-label="Close">✕</button></div>
+    <section class="set-sec">
+      <h4>Appearance</h4>
+      <div class="set-row">
+        <div><b>🌓 Brightness</b><p class="muted">For this device only. Slides and the presentation screen keep their own colors.</p></div>
+        <div class="seg" id="setTheme">${[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['system', '💻 System']].map(([k, v]) =>
+          `<button data-theme="${k}" class="${THEME.choice() === k ? 'on' : ''}">${v}</button>`).join('')}</div>
+      </div>
+    </section>
+    ${MODE === 'group' ? '' : `<section class="set-sec">
+      <h4>General</h4>
+      <div class="set-row">
+        <div><b>🌐 Language</b><p class="muted">SlideLink on all screens: PC, phones, co-presenters and audience. Guests can still choose their own.</p></div>
+        <select id="setLang" data-noi18n>${Object.entries(I18N_LANGS).map(([k, v]) => `<option value="${k}" ${S && S.lang === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      </div>
+    </section>`}
+  </div>`;
+  document.body.appendChild(back);
+  const sl = back.querySelector('#setLang');
+  if (sl) sl.onchange = e => api({ op: 'set_lang', lang: e.target.value });
+  back.querySelector('#setTheme').onclick = e => {
+    const b = e.target.closest('[data-theme]');
+    if (!b) return;
+    THEME.set(b.dataset.theme);
+    back.querySelectorAll('#setTheme button').forEach(x => x.classList.toggle('on', x === b));
+  };
+  back.onclick = e => { if (e.target === back || e.target.closest('[data-x]')) back.remove(); };
+}
+
 /* "Linked devices" on the PC: with no phone connected, first offer the app download as a QR code. */
 // EN: PC 'Linked devices' button: with no phone online, first a QR code to download the app.
 // DE: PC-Knopf 'Linked devices': Ist kein Handy online, zuerst ein QR-Code zum Herunterladen der App.
@@ -507,7 +544,7 @@ async function openConnect() {
     <div class="qr-url"><button class="link" data-copy>Copy download link</button></div>
     <div class="row" style="gap:10px;margin-top:16px">
       <button class="primary" data-link style="flex:1">+ Link a new device</button>
-      <button data-devs style="flex:1">⚙ Linked devices</button>
+      <button data-devs style="flex:1">🔗 Linked devices</button>
     </div>
   </div>`;
   document.body.appendChild(back);
@@ -527,10 +564,11 @@ function openDevices() {
   devModal = document.createElement('div');
   devModal.className = 'modal-back';
   devModal.innerHTML = `<div class="modal devices-modal">
-    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">⚙ Linked devices</h3>
+    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">🔗 Linked devices</h3>
       <button class="close" id="devClose" style="flex:none" aria-label="Close">✕</button></div>
     <p class="muted" style="margin:6px 0 12px">Linked devices stay connected permanently and reconnect on their own.
       Only linked devices can see or control your presentations.</p>
+    ${MODE === 'library' ? '' : '<button class="link set-link" id="devSettings">⚙ Settings (language, brightness)</button>'}
     <div class="ts-box" id="tsBox"></div>
     <ul class="dev-list" id="devList"></ul>
     <div class="link-box" id="linkBox"></div>
@@ -541,6 +579,8 @@ function openDevices() {
   </div>`;
   document.body.appendChild(devModal);
   devModal.addEventListener('click', onDevClick);
+  const ds = $('#devSettings', devModal);
+  if (ds) ds.onclick = e => { e.stopPropagation(); openSettings(); };
   const up = $('#appUpdate', devModal);
   if (up) up.onclick = () => SlideLinkApp.checkUpdate();
   loadTailscale();
@@ -698,7 +738,7 @@ function initEditor() {
       <button id="addBtn">+ Slide</button>
       <div class="spacer"></div>
       <div class="devices" id="devices"></div>
-      <button id="devBtn" title="Linked devices">⚙ Linked devices <span class="count" id="devCount"></span></button>
+      <button id="devBtn" title="Linked devices">🔗 Linked devices <span class="count" id="devCount"></span></button>
       <button id="remoteBtn">Remote</button>
       <button class="primary" id="presentBtn">▶ Present</button>
     </header>

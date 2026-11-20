@@ -21,11 +21,11 @@ const deckDate = d => d.date || d.created_at || d.updated_at || 0;
 // EN: Day heading: Today, Yesterday or the full date.
 // DE: Tagesüberschrift: Heute, Gestern oder das volle Datum.
 function dayLabel(t) {
-  const d = new Date(t * 1000), today = new Date();
+  const d = new Date(t * 1000), today = new Date();   // dates in the interface language
   const days = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(I18N.locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 // EN: Sorts newest first and groups by day.
 // DE: Sortiert neueste zuerst und gruppiert nach Tagen.
@@ -80,21 +80,21 @@ function initLibrary() {
   $('#app').innerHTML = `
   <div class="lib">
     <aside class="lib-side">
-      <div class="lib-brand"><img src="/icon.svg" alt="" width="30" height="30"><div class="logo">Slide<span>Link</span></div></div>
+      <div class="lib-brand"><img src="/icon.svg" alt="" width="30" height="30"><div class="logo">Slide<span>Link</span></div>
+        <button class="settings-btn" id="setBtn" title="Settings" aria-label="Settings">⚙</button></div>
       <button class="lib-home-btn" id="homeBtn">▦ Library home</button>
       <div id="libTabs"></div>
       <input id="libSearch" placeholder="Search" aria-label="Search">
       <div class="lib-list" id="libList"></div>
       <div class="lib-side-foot">
         <div class="up-status" id="upStatus"></div>
-        <button class="primary" id="newDeck" style="width:100%">＋ New presentation</button>
-        <button id="uploadBtn" style="width:100%" title="PowerPoint, claude.ai deck (.zip), HTML deck, images">⬆ Upload presentation</button>
-        <button id="watchBtn" style="width:100%" title="Everything Claude saves in this folder appears here automatically">📁 Claude Presentations</button>
-        <div class="up-status on" id="watchStatus" style="display:none"></div>
+        <button class="primary" id="uploadBtn" style="width:100%" title="PowerPoint, claude.ai deck (.zip), HTML, PDF doc, images – or drag files here">＋ Add presentation</button>
+        <button id="watchBtn" class="watch-btn" style="width:100%" title="Everything Claude saves in this folder appears here automatically">
+          <span>📁 Claude Presentations</span><span class="sync-badge" id="syncBadge" hidden></span></button>
         <input type="file" id="uploadInput" multiple hidden
-          accept=".pptx,.ppt,.odp,.ppsx,.pps,.potx,.zip,.json,.html,.htm,.png,.jpg,.jpeg,.webp,.gif">
+          accept=".pptx,.ppt,.odp,.ppsx,.pps,.potx,.zip,.json,.html,.htm,.pdf,.png,.jpg,.jpeg,.webp,.gif">
         <button id="audBtn" style="width:100%">👥 Group & audience <small class="beta">BETA</small></button>
-        <button id="devBtn" style="width:100%">⚙ Linked devices <span class="count" id="devCount"></span></button>
+        <button id="devBtn" style="width:100%">🔗 Linked devices <span class="count" id="devCount"></span></button>
       </div>
     </aside>
     <main class="lib-main" id="libMain"><div class="muted" style="padding:40px">Loading your presentations…</div></main>
@@ -105,23 +105,22 @@ function initLibrary() {
   $('#homeBtn').onclick = () => selectDeck(null);
   $('#devBtn').onclick = openConnect;
   $('#audBtn').onclick = openAudience;
-  $('#newDeck').onclick = async () => {
-    const title = prompt('Name of the new presentation', 'Untitled presentation');
-    if (title === null) return;
-    const j = await api({ op: 'create_deck', title: title.trim() || 'Untitled presentation' });
-    if (j.ok) location.href = '/edit';
-  };
+  $('#setBtn').onclick = openSettings;
   $('#uploadBtn').onclick = () => $('#uploadInput').click();
   $('#watchBtn').onclick = () => post('/api/watch/open', {});
   const showWatch = async () => {
     const w = await fetch('/api/watch', { headers: authHeaders(), cache: 'no-store' }).then(r => r.json()).catch(() => null);
-    const el = $('#watchStatus');
-    if (!w || !el) return;
-    el.style.display = '';
-    el.className = 'up-status on' + (w.error ? '' : ' done');
-    el.textContent = w.error ? `⚠ ${w.error}`
-      : `● Auto-sync on · ${w.count} item${w.count === 1 ? '' : 's'} in the folder` +
-        (w.last ? ` · last: ${w.last.name} ${w.last.what}` : '');
+    // small badge on the folder button: green = auto-sync running (number of items), red = problem; details on hover
+    const badge = $('#syncBadge'), btn = $('#watchBtn');
+    if (!w || !badge) return;
+    badge.hidden = false;
+    badge.className = 'sync-badge ' + (w.error ? 'err' : 'ok');
+    badge.textContent = w.error ? '!' : String(w.count);
+    const tip = w.error ? I18N.t('Sync problem') + ': ' + w.error
+      : I18N.t('Auto-sync on') + ' · ' + I18N.t(`${w.count} items in the folder`) +
+        (w.last ? ' · ' + I18N.t('last') + ': ' + w.last.name + ' (' + I18N.t(w.last.what) + ')' : '');
+    btn.title = I18N.t('Everything Claude saves in this folder appears here automatically') + '\n' + tip;
+    btn.__i18n_title = { src: btn.title, out: btn.title };    // already translated: the language layer leaves it alone
   };
   showWatch(); setInterval(showWatch, 5000);
   $('#uploadInput').onchange = e => { uploadFiles(e.target.files); e.target.value = ''; };
@@ -186,7 +185,82 @@ function selectDeck(id) {
 
 // EN: Buttons on a presentation: present, edit, remote, duplicate, delete.
 // DE: Knöpfe einer Präsentation: präsentieren, bearbeiten, Fernbedienung, duplizieren, löschen.
+// EN: The ⋯ menu of a library tile: edit (title, speaker notes), duplicate, delete.
+// DE: Das ⋯-Menü einer Bibliothekskachel: bearbeiten (Titel, Sprechernotizen), duplizieren, löschen.
+function openCardMenu(btn) {
+  closeCardMenu();
+  const id = btn.dataset.more, deck = LIB.decks.find(d => d.id === id);
+  if (!deck) return;
+  const m = document.createElement('div');
+  m.className = 'card-menu'; m.id = 'cardMenu';
+  m.innerHTML = `<button data-cm="edit">✎ Edit</button><button data-cm="duplicate">⧉ Duplicate</button>
+    <button data-cm="delete" class="danger">🗑 Delete</button>`;
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect();
+  m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 6) + 'px';
+  m.style.left = Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + 'px';
+  btn.closest('.lib-card').classList.add('menu-open');
+  m.onclick = async e => {
+    const b = e.target.closest('[data-cm]');
+    if (!b) return;
+    closeCardMenu();
+    if (b.dataset.cm === 'edit') return openEditDeck(id);
+    if (b.dataset.cm === 'duplicate') {
+      const j = await api({ op: 'duplicate_deck', deck_id: id });
+      if (j.ok) { toast('Duplicated'); loadLibrary(); }
+    }
+    if (b.dataset.cm === 'delete' && confirm(`Delete "${deck.title}" with all ${deck.slide_count} slides? This cannot be undone.`)) {
+      const j = await api({ op: 'delete_deck', deck_id: id });
+      if (j.ok) { if (libSel === id) selectDeck(null); loadLibrary(); }
+    }
+  };
+}
+function closeCardMenu() {
+  document.getElementById('cardMenu')?.remove();
+  document.querySelectorAll('.lib-card.menu-open').forEach(c => c.classList.remove('menu-open'));
+}
+document.addEventListener('click', e => { if (!e.target.closest('#cardMenu, [data-more]')) closeCardMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCardMenu(); });
+
+// EN: Edit window: the title and the speaker notes of every slide (the slides themselves stay as they are).
+// DE: Bearbeiten-Fenster: Titel und Sprechernotizen jeder Folie (die Folien selbst bleiben, wie sie sind).
+async function openEditDeck(id) {
+  const d = await loadDeck(id);
+  const back = document.createElement('div');
+  back.className = 'modal-back';
+  back.innerHTML = `<div class="modal edit-modal">
+    <div class="row" style="align-items:center;flex:none"><h3 style="margin:0">✎ Edit presentation</h3>
+      <button class="close" data-x style="flex:none" aria-label="Close">✕</button></div>
+    <label for="edTitle">Title</label>
+    <input id="edTitle" maxlength="200" value="${esc(d.title)}">
+    <p class="muted" style="margin:10px 0 6px">Speaker notes are shown on the phone remote while you present.</p>
+    <div class="ed-slides">${d.slides.map((s, i) => `
+      <div class="ed-slide">
+        <div class="ed-cover">${slideHTML(s, d, i)}<span class="ed-n">${i + 1}</span></div>
+        <div class="ed-fields"><b data-noi18n>${esc(s.title && !/^s?\d+$/i.test(s.title) ? s.title : I18N.t('Slide') + ' ' + (i + 1))}</b>
+          <textarea data-sid="${esc(s.id)}" rows="3" placeholder="Speaker notes for this slide">${esc(s.notes || '')}</textarea></div>
+      </div>`).join('')}</div>
+    <div class="row" style="gap:10px;margin-top:14px;flex:none">
+      <button data-x style="flex:1">Cancel</button><button class="primary" data-save style="flex:1">Save</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  hsObserve(back);
+  back.onclick = async e => {
+    if (e.target === back || e.target.closest('[data-x]')) return back.remove();
+    if (!e.target.closest('[data-save]')) return;
+    const notes = {};
+    back.querySelectorAll('textarea[data-sid]').forEach(t => {
+      const s = d.slides.find(x => x.id === t.dataset.sid);
+      if (s && (s.notes || '') !== t.value) notes[t.dataset.sid] = t.value;
+    });
+    const j = await api({ op: 'edit_deck', deck_id: id, title: back.querySelector('#edTitle').value, notes });
+    if (j.ok) { delete deckCache[id]; back.remove(); toast('Saved'); loadLibrary(); }
+  };
+}
+
 async function onLibMainClick(e) {
+  const more = e.target.closest('[data-more]');
+  if (more) { e.stopPropagation(); return openCardMenu(more); }
   const card = e.target.closest('.lib-card');
   if (card) return selectDeck(card.dataset.id);
   const b = e.target.closest('button[data-act]');
@@ -269,6 +343,7 @@ function renderLibrary() {
         ${days.map(g => `<h3 class="lib-dayhead">${esc(g.label)}</h3>
         <div class="lib-grid">${g.items.map(d => `
           <div class="lib-card ${deckKind(d)}" data-id="${esc(d.id)}">
+            <button class="card-more" data-more="${esc(d.id)}" title="More" aria-label="More">⋯</button>
             <div class="lib-card-cover">${coverHTML(d)}${d.id === LIB.active ? '<span class="badge badge-live lib-badge">OPEN</span>' : ''}</div>
             <div class="lib-card-t">${esc(d.title)}</div>
             <div class="lib-card-m"><span>${countLabel(d)}</span><span class="src">${sourceLabel(d)}</span></div>

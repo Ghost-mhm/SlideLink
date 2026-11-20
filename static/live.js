@@ -20,7 +20,7 @@ const $ = s => document.querySelector(s);
 function connect() {
   if (es) es.close();
   es = new EventSource(`/events?role=audience&k=${encodeURIComponent(KEY)}&client=${CLIENT}`);
-  es.onmessage = e => { fails = 0; const m = JSON.parse(e.data); if (m.type === 'state') { S = m.state; render(); } };
+  es.onmessage = e => { fails = 0; const m = JSON.parse(e.data); if (m.type === 'state') { S = m.state; I18N.fromServer(S.lang); render(); } };
   es.addEventListener('unlinked', () => { es.close(); message('This audience link was replaced. Ask the presenter for the new one.'); });
   es.onerror = () => {
     fails++;
@@ -37,11 +37,18 @@ function message(text) { $('#lv').innerHTML = `<div class="lv-msg">${esc(text)}<
 function render() {
   if (!$('#stage')) {
     $('#lv').innerHTML = `
-      <div class="lv-top"><img src="/icon.svg" alt=""><b id="title"></b><span class="lv-live">● LIVE</span></div>
+      <div class="lv-top"><img src="/icon.svg" alt=""><b id="title"></b><span class="lv-live">● LIVE</span>
+        <select id="ownLang" class="lv-lang" data-noi18n aria-label="Language"></select></div>
       <div class="lv-stage"><div id="stage"></div><div class="lv-black" id="black">Screen is black</div></div>
       <div class="lv-meta"><span id="count"></span><span id="speaker" class="lv-speaker"></span></div>
       <div id="poll"></div>`;
     shownKey = null;
+  }
+  const sel = $('#ownLang');
+  if (sel && !sel.options.length) {
+    sel.innerHTML = `<option value="">🌐 ${I18N.lang.toUpperCase()}</option>` + Object.entries(I18N_LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+    sel.value = I18N.own();
+    sel.onchange = () => { I18N.setOwn(sel.value, S && S.lang); sel.options[0].textContent = '🌐 ' + I18N.lang.toUpperCase(); };
   }
   const deck = S.deck, i = S.present.index || 0, s = deck.slides[i], step = S.present.step || 0;
   $('#title').textContent = deck.title;

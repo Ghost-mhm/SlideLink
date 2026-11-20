@@ -66,7 +66,7 @@ function initRemote() {
       <button id="decksBtn"><i>📚</i><span>Decks</span></button>
       <button id="pcBtn" title="Show the presentation on the PC / close it"><i>🖥</i><span>On PC</span></button>
       <button id="liveBtnSheet" aria-label="Audience, polls, presenters"><i>👥</i><span>Live</span></button>
-      <button id="devBtn" aria-label="Linked devices"><i>⚙</i><span>Devices</span></button>
+      <button id="devBtn" aria-label="Linked devices"><i>🔗</i><span>Devices</span></button>
     </div>
     <div class="rm-pad">
       <button id="prevBtn" aria-label="Back">◀</button>
@@ -165,7 +165,7 @@ function presentingChanged() {
   lastPresenting = now;
   if (window.SlideLinkApp && SlideLinkApp.setPresenting) SlideLinkApp.setPresenting(now);
 }
-setInterval(() => S && presentingChanged(), 2000);
+setInterval(() => typeof S !== 'undefined' && S && presentingChanged(), 2000);   // safe even if app.js failed to load
 // EN: Text of the PC button (with 'Opening…'/'Closing…' right after a tap).
 // DE: Text des PC-Knopfs (direkt nach dem Tippen mit 'Opening…'/'Closing…').
 function renderPcBtn() {
@@ -181,7 +181,7 @@ function renderPcBtn() {
   if (pcPending) return set('⏳', pcPending.want ? 'Opening' : 'Closing', !pcPending.want);
   set(open ? '✕' : '🖥', open ? 'Close' : 'On PC', open);
 }
-setInterval(() => pcPending && renderPcBtn(), 1000);
+setInterval(() => pcPending && typeof S !== 'undefined' && renderPcBtn(), 1000);
 // EN: Short green confirmation message.
 // DE: Kurze grüne Bestätigungsmeldung.
 function toastOk(msg) {
@@ -212,6 +212,8 @@ async function loadRemoteDecks() {
 // EN: Taps in the sheet: tab, slide, presentation.
 // DE: Tippen in der Liste: Reiter, Folie, Präsentation.
 async function onSheetClick(e) {
+  const ol = e.target.closest('[data-ownlang]');
+  if (ol) { I18N.setOwn(ol.dataset.ownlang, S && S.lang); return renderSheet(); }
   const act = e.target.closest('[data-live]');
   if (act) return liveAction(act.dataset.live, act);
   const tb = e.target.closest('[data-rtab]');
@@ -276,6 +278,12 @@ function renderLiveSheet() {
       <p class="muted">${p.total} vote${p.total === 1 ? '' : 's'} · ${p.open ? 'open' : 'closed'}</p>
       <div class="lv-row"><button data-live="show" class="${p.show ? 'on' : ''}">${p.show ? 'Hide results on screen' : '📺 Show results on screen'}</button>
         ${p.open ? '<button data-live="end">End voting</button>' : '<button data-live="clear">New poll</button>'}</div>`);
+  }
+  if (MODE === 'group') {
+    let lg = $('#lvLang');
+    if (!lg) { lg = document.createElement('div'); lg.className = 'lv-sec'; lg.id = 'lvLang'; $('#sheetBody').appendChild(lg); }
+    setHTML(lg, `<h4>🌐 My language</h4><div class="lv-names">${[['', 'Same as the presenter'], ...Object.entries(I18N_LANGS)].map(([k, v]) =>
+      `<button data-ownlang="${k}" class="${I18N.own() === k ? 'on' : ''}" ${k ? 'data-noi18n' : ''}>${v}</button>`).join('')}</div>`);
   }
   const names = [...new Set(['PC', ...(S.linked || []).filter(d => d.type !== 'host').map(d => d.name),
     ...((S.group && (S.group.names || (S.group.members || []).map(m => m.name))) || [])])];

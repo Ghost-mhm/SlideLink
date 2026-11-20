@@ -110,6 +110,12 @@ public class MainActivity extends Activity {
             });
         }
         /** The page says whether a presentation is running: only then the screen stays on (and dims when idle). */
+        /** The admin's interface language (sent with every state): the app's own screens follow it. */
+        @JavascriptInterface public void setLang(String lang) {
+            if (lang == null || lang.equals(L.lang)) return;
+            L.lang = lang;
+            prefs.edit().putString("lang", lang).apply();
+        }
         @JavascriptInterface public void setPresenting(boolean on) { ui.post(() -> applyPresenting(on)); }
         /** The PC's current home-Wi-Fi addresses (they can change), used to switch to Wi-Fi automatically. */
         @JavascriptInterface public void setLanUrls(String urls) {
@@ -138,6 +144,7 @@ public class MainActivity extends Activity {
         super.onCreate(state);
         prefs = getSharedPreferences("slidelink", MODE_PRIVATE);
         updater = new Updater(this);
+        L.lang = prefs.getString("lang", L.lang);       // last language of the admin, else the phone's
         // the screen stays on only while presenting (see applyPresenting); otherwise it times out normally
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
@@ -173,7 +180,7 @@ public class MainActivity extends Activity {
             // DE: Die Seite konnte nicht laden: Offline-Bildschirm zeigen.
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
-                if (req.isForMainFrame()) showOffline("Can’t reach SlideLink on your PC.");
+                if (req.isForMainFrame()) showOffline(L.t("Can’t reach SlideLink on your PC.", "SlideLink auf deinem PC ist nicht erreichbar."));
             }
 
             // EN: Keeps navigation inside SlideLink (other links are not opened in the app).
@@ -264,12 +271,13 @@ public class MainActivity extends Activity {
         searching = true;
         ui.removeCallbacks(autoRetry);
         spinner.setVisibility(View.VISIBLE);
-        offlineText.setText("Connecting to SlideLink on your PC…");
+        offlineText.setText(L.t("Connecting to SlideLink on your PC…", "Verbinde mit SlideLink auf deinem PC…"));
         final List<String> list = candidates();
         if (list.isEmpty()) {                    // first start: the app doesn't know any PC yet
             searching = false;
             spinner.setVisibility(View.GONE);
-            offlineText.setText("Welcome to SlideLink!\n\nEnter your PC's address. You find it in SlideLink on the PC under ⚙ Linked devices → Link a new device.");
+            offlineText.setText(L.t("Welcome to SlideLink!\n\nEnter your PC's address. You find it in SlideLink on the PC under ⚙ Linked devices → Link a new device.",
+                    "Willkommen bei SlideLink!\n\nGib die Adresse deines PCs ein. Du findest sie in SlideLink am PC unter ⚙ Verknüpfte Geräte → Neues Gerät verknüpfen."));
             askAddress();
             return;
         }
@@ -283,7 +291,7 @@ public class MainActivity extends Activity {
             ui.post(() -> {
                 searching = false;
                 if (result == null) {
-                    showOffline("Can’t reach SlideLink on your PC.");
+                    showOffline(L.t("Can’t reach SlideLink on your PC.", "SlideLink auf deinem PC ist nicht erreichbar."));
                 } else {
                     open(result);
                 }
@@ -370,13 +378,13 @@ public class MainActivity extends Activity {
         tp.topMargin = dp(20);
         offline.addView(offlineText, tp);
 
-        Button retry = button("Try again", true);
+        Button retry = button(L.t("Try again", "Erneut versuchen"), true);
         retry.setOnClickListener(v -> findPc());
         LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(52));
         rp.topMargin = dp(28);
         offline.addView(retry, rp);
 
-        Button change = button("Change PC address", false);
+        Button change = button(L.t("Change PC address", "PC-Adresse \u00e4ndern"), false);
         change.setOnClickListener(v -> askAddress());
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(48));
         cp.topMargin = dp(12);
@@ -406,17 +414,17 @@ public class MainActivity extends Activity {
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         input.setText(prefs.getString("base", "https://"));
         new AlertDialog.Builder(this)
-                .setTitle("PC address")
-                .setMessage("Shown on the PC in SlideLink → Linked devices.")
+                .setTitle(L.t("PC address", "PC-Adresse"))
+                .setMessage(L.t("Shown on the PC in SlideLink → Linked devices.", "Steht am PC in SlideLink → Verknüpfte Geräte."))
                 .setView(input)
-                .setPositiveButton("Connect", (d, w) -> {
+                .setPositiveButton(L.t("Connect", "Verbinden"), (d, w) -> {
                     String a = input.getText().toString().trim().replaceAll("/+$", "");
                     if (!a.startsWith("http")) a = "http://" + a;
                     if (!a.matches(".*:\\d+$")) a = a + ":8765";
                     prefs.edit().putString("base", a).apply();
                     findPc();
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(L.t("Cancel", "Abbrechen"), null)
                 .show();
     }
 

@@ -1,1 +1,1 @@
-Present in group: join someone's group session from a QR code, in the app or the browser.
+New app icon.

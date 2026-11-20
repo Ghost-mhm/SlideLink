@@ -300,13 +300,26 @@ def upload_to_op(name, data):
         return json_to_import(data, title)
     if ext in (".html", ".htm"):
         return html_to_import(data.decode("utf-8", "replace"), title)
+    if ext == ".pdf":                       # a PDF becomes a doc (every page shown, exactly like the original)
+        tok, out = _media_dir()
+        tmp = os.path.join(out, "upload.pdf")
+        with open(tmp, "wb") as f:
+            f.write(data)
+        try:
+            return pdf_to_doc(tmp, title)
+        finally:
+            try:
+                os.remove(tmp)
+                os.rmdir(out)                   # pdf_to_doc keeps its pages in a media folder of its own
+            except OSError:
+                pass
     if ext in IMAGE_EXT:
         tok, out = _media_dir()
         fname = "image" + ext
         with open(os.path.join(out, fname), "wb") as f:
             f.write(data)
         return {"op": "import_deck", "title": title, "slides": [image_slide(tok, fname, title)], "source": None}
-    raise ValueError(f"Unsupported file type '{ext or name}'. Use PowerPoint, a deck .zip, .html, .json or images.")
+    raise ValueError(f"Unsupported file type '{ext or name}'. Use PowerPoint, a deck .zip, .html, .pdf, .json or images.")
 DEVICE_TYPES = ["phone", "tablet", "pc"]
 CODE_TTL = 600            # link codes are valid for 10 minutes
 COOKIE = "sl_token"
@@ -315,7 +328,8 @@ HOST = {"id": "host", "name": "This PC", "type": "host"}
 REMOTE_ONLY = {"phone", "tablet"}          # these devices control presentations but never edit them
 REMOTE_OPS = {"next", "prev", "goto", "blackout", "open_deck", "show_on_pc", "open_on_pc", "close_on_pc", "resync",
               "poll_start", "poll_show", "poll_end", "poll_clear", "speaker_me", "speaker_set", "audience_new", "join_qr",
-              "group_start", "group_end", "group_kick", "group_qr"}
+              "group_start", "group_end", "group_kick", "group_qr", "set_lang"}
+LANGS = ("en", "de")        # interface languages (static/i18n.js); the admin picks one for every screen
 # EN: Group members (joined with the group link, not linked): control the talk only, never edit, switch decks or manage.
 # DE: Gruppenmitglieder (über den Gruppen-Link, nicht verknüpft): steuern nur den Vortrag, nie bearbeiten, Deck wechseln oder verwalten.
 GROUP_OPS = {"next", "prev", "goto", "blackout", "resync", "poll_start", "poll_show", "poll_end", "poll_clear",
@@ -780,7 +794,7 @@ class Store:
         return {"deck": {"id": d["id"], "title": d["title"], "theme": d.get("theme"), "css": d.get("css", ""),
                          "faces": d.get("faces", []), "slides": slides},
                 "present": self.present, "poll": self.poll_public(), "speaker": self.speaker,
-                "build": app_build(), "server_time": time.time()}
+                "lang": library.meta.get("lang", "en"), "build": app_build(), "server_time": time.time()}
 
     # EN: The state for group members: like the full state, but without linked devices and group admin data.
     # DE: Der Zustand für Gruppenmitglieder: wie der volle, aber ohne verknüpfte Geräte und Gruppen-Admin-Daten.
@@ -802,6 +816,7 @@ class Store:
                 "build": app_build(),
                 "app_latest": app_latest(),
                 "poll": self.poll_public(), "speaker": self.speaker, "group": self.group_admin_view(),
+                "lang": library.meta.get("lang", "en"),
                 "audience": {"key": self.audience_key(), "url": audience_base(), "qr": self.join_qr,
                              "count": sum(1 for c in self.clients.values() if c["role"] == "audience")},
                 "pc_windows": {r: sum(1 for c in self.clients.values() if c["device"] == "host" and c["role"] == r)
@@ -1052,6 +1067,13 @@ class Store:
                             c["q"].put(KICK)
                     self.log(by, f"removed {name} from the group")
                 return {}, False
+            if kind == "set_lang":
+                lang = str(op.get("lang") or "")
+                if lang not in LANGS:
+                    raise ValueError("Unknown language")
+                library.meta["lang"] = lang
+                library.set_active(library.meta.get("active"))     # saves library.json
+                return {"lang": lang}, False
             if kind == "group_qr":
                 self.group_qr = bool(op.get("on", True)) and bool(self.group_active())
                 return {}, False
@@ -1130,8 +1152,25 @@ class Store:
             if kind == "duplicate_deck":
                 src = library.load(op.get("deck_id"))
                 d = library.create(title=src["title"] + " (copy)", theme=src["theme"], slides=src["slides"],
-                                   css=src.get("css"), faces=src.get("faces"))
+                                   css=src.get("css"), faces=src.get("faces"), kind=src.get("kind"))
+                self.log(by, f"duplicated \u201c{src['title'][:60]}\u201d")
                 return {"deck_id": d["id"]}, False
+
+            if kind == "edit_deck":
+                # title and speaker notes of any deck, without opening it on all screens (library "Edit")
+                did = op.get("deck_id")
+                d = self.deck if self.deck["id"] == did else library.load(did)
+                title = op.get("title")
+                if isinstance(title, str) and title.strip():
+                    d["title"] = title.strip()[:200]
+                notes = op.get("notes") if isinstance(op.get("notes"), dict) else {}
+                for s in d["slides"]:
+                    if s["id"] in notes and isinstance(notes[s["id"]], str):
+                        s["notes"] = notes[s["id"]][:20000]
+                        s["updated_at"] = time.time()
+                library.save(d)
+                self.log(by, f"edited \u201c{d['title'][:60]}\u201d (title and notes)")
+                return {"deck_id": did}, d is self.deck
 
             if kind == "delete_deck":
                 did = op.get("deck_id")

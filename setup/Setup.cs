@@ -15,14 +15,14 @@ using Microsoft.Win32;
 
 [assembly: AssemblyTitle("SlideLink Setup")]
 [assembly: AssemblyProduct("SlideLink")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.2.1.0")]
+[assembly: AssemblyFileVersion("1.2.1.0")]
 
 // EN: Entry point: window, silent install (/S) or a picture of the window (/Snapshot).
 // DE: Einstieg: Fenster, stille Installation (/S) oder ein Bild des Fensters (/Snapshot).
 static class Program
 {
-    public const string Version = "1.0";
+    public const string Version = "1.2.1 beta";
 
     [STAThread]
     // EN: Starts the setup in the chosen mode.
@@ -63,6 +63,13 @@ static class Program
 // DE: Das Setup-Fenster: Prüfungen, Optionen, Fortschritt und Log.
 class SetupForm : Form
 {
+    // EN: Text in the Windows display language (German or English).
+    // DE: Text in der Anzeigesprache von Windows (Deutsch oder Englisch).
+    public static string T(string en, string de)
+    {
+        return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de" ? de : en;
+    }
+
     static readonly Color Bg = Color.FromArgb(20, 21, 28), Panel = Color.FromArgb(32, 34, 45),
         Accent = Color.FromArgb(124, 131, 255), Muted = Color.FromArgb(170, 174, 196), Good = Color.FromArgb(110, 214, 150),
         Bad = Color.FromArgb(255, 138, 138);
@@ -92,23 +99,23 @@ class SetupForm : Form
         try { logo.Image = Icon.ExtractAssociatedIcon(Application.ExecutablePath).ToBitmap(); } catch { }
         Controls.Add(logo);
         Controls.Add(new Label { Text = "SlideLink", Font = new Font("Segoe UI Semibold", 22f), AutoSize = true, Location = new Point(96, 20) });
-        Controls.Add(new Label { Text = "Presentations with phone remote and Claude · Version " + Program.Version, ForeColor = Muted,
+        Controls.Add(new Label { Text = T("Presentations with phone remote and Claude · Version ", "Präsentationen mit Handy-Fernbedienung und Claude · Version ") + Program.Version, ForeColor = Muted,
             AutoSize = true, Location = new Point(99, 62) });
 
         bool update = Directory.Exists(dest);
         var box = new Panel { Location = new Point(28, 104), Size = new Size(524, 92), BackColor = Panel };
         Controls.Add(box);
-        box.Controls.Add(new Label { Text = update ? "Updates SlideLink. Your presentations and linked phones stay."
-                                                   : "Installs SlideLink for you (no admin rights needed).",
+        box.Controls.Add(new Label { Text = update ? T("Updates SlideLink. Your presentations and linked phones stay.", "Aktualisiert SlideLink. Deine Präsentationen und verknüpften Handys bleiben.")
+                                                   : T("Installs SlideLink for you (no admin rights needed).", "Installiert SlideLink für dich (keine Admin-Rechte nötig)."),
             ForeColor = Muted, Location = new Point(14, 10), Size = new Size(500, 22) });
         pyLabel.Location = new Point(14, 36); pyLabel.Size = new Size(360, 22); box.Controls.Add(pyLabel);
         browserLabel.Location = new Point(14, 60); browserLabel.Size = new Size(500, 22); box.Controls.Add(browserLabel);
-        Style(pythonBtn, false); pythonBtn.Text = "Install Python"; pythonBtn.Location = new Point(384, 32); pythonBtn.Size = new Size(126, 30);
+        Style(pythonBtn, false); pythonBtn.Text = T("Install Python", "Python installieren"); pythonBtn.Location = new Point(384, 32); pythonBtn.Size = new Size(126, 30);
         pythonBtn.Visible = false; pythonBtn.Click += InstallPython; box.Controls.Add(pythonBtn);
 
         int y = 212;
         var boxes = new[] { desktopBox, startupBox, launchBox };
-        var texts = new[] { "Desktop shortcut", "Start with Windows (keeps your phone connected)", "Start SlideLink when finished" };
+        var texts = new[] { T("Desktop shortcut", "Verknüpfung auf dem Desktop"), T("Start with Windows (keeps your phone connected)", "Mit Windows starten (hält dein Handy verbunden)"), T("Start SlideLink when finished", "SlideLink danach starten") };
         var ons = new[] { true, false, true };
         for (int i = 0; i < boxes.Length; i++)
         {
@@ -125,9 +132,9 @@ class SetupForm : Form
         log.Font = new Font("Consolas", 8.5f); log.Visible = false; Controls.Add(log);
         statusLabel.Location = new Point(28, 316); statusLabel.Size = new Size(524, 60); statusLabel.ForeColor = Muted; Controls.Add(statusLabel);
 
-        Style(installBtn, true); installBtn.Text = update ? "Update" : "Install"; installBtn.Location = new Point(392, 414); installBtn.Size = new Size(160, 40);
+        Style(installBtn, true); installBtn.Text = update ? T("Update", "Aktualisieren") : T("Install", "Installieren"); installBtn.Location = new Point(392, 414); installBtn.Size = new Size(160, 40);
         installBtn.Click += OnInstall; Controls.Add(installBtn);
-        Style(cancelBtn, false); cancelBtn.Text = "Cancel"; cancelBtn.Location = new Point(268, 414); cancelBtn.Size = new Size(112, 40);
+        Style(cancelBtn, false); cancelBtn.Text = T("Cancel", "Abbrechen"); cancelBtn.Location = new Point(268, 414); cancelBtn.Size = new Size(112, 40);
         cancelBtn.Click += (s, e) => Close(); Controls.Add(cancelBtn);
         AcceptButton = installBtn;
         CheckRequirements();
@@ -155,14 +162,14 @@ class SetupForm : Form
     void CheckRequirements()
     {
         python = FindPython();
-        pyLabel.Text = python != null ? "✓ Python found" : "✗ Python 3.10 or newer is needed";
+        pyLabel.Text = python != null ? T("✓ Python found", "✓ Python gefunden") : T("✗ Python 3.10 or newer is needed", "✗ Python 3.10 oder neuer wird benötigt");
         pyLabel.ForeColor = python != null ? Good : Bad;
         pythonBtn.Visible = python == null;
         string browser = FindBrowser();
-        browserLabel.Text = browser != null ? "✓ " + browser + " found (SlideLink's window)" : "! No Chrome or Edge found: SlideLink opens in your default browser";
+        browserLabel.Text = browser != null ? "✓ " + browser + T(" found (SlideLink's window)", " gefunden (SlideLink-Fenster)") : T("! No Chrome or Edge found: SlideLink opens in your default browser", "! Kein Chrome oder Edge gefunden: SlideLink öffnet sich im Standardbrowser");
         browserLabel.ForeColor = browser != null ? Good : Muted;
         installBtn.Enabled = python != null;
-        statusLabel.Text = python == null ? "Press \"Install Python\" (uses Windows' winget), then Install." : "";
+        statusLabel.Text = python == null ? T("Press \"Install Python\" (uses Windows' winget), then Install.", "Tippe auf \"Python installieren\" (nutzt winget von Windows), dann auf Installieren.") : "";
     }
 
     // EN: Finds Python 3.10+ (registry, usual folders, py, python); ignores the Store alias.
@@ -245,10 +252,10 @@ class SetupForm : Form
     // DE: Installiert Python mit winget; ohne winget öffnet es python.org und wartet.
     void InstallPython(object s, EventArgs e)
     {
-        var r = MessageBox.Show("SlideLink needs Python. Install Python 3.13 now with Windows' package manager (winget)?\n\n" +
-                                "A window opens; follow it, then come back here.", "Install Python", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+        var r = MessageBox.Show(T("SlideLink needs Python. Install Python 3.13 now with Windows' package manager (winget)?\n\n", "SlideLink braucht Python. Python 3.13 jetzt mit der Windows-Paketverwaltung (winget) installieren?\n\n") +
+                                T("A window opens; follow it, then come back here.", "Ein Fenster öffnet sich; folge ihm und komm dann hierher zurück."), T("Install Python", "Python installieren"), MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
         if (r != DialogResult.OK) return;
-        pythonBtn.Enabled = false; statusLabel.Text = "Installing Python…";
+        pythonBtn.Enabled = false; statusLabel.Text = T("Installing Python…", "Python wird installiert…");
         new Thread(() =>
         {
             try
@@ -261,11 +268,10 @@ class SetupForm : Form
                 // no winget on this PC (older Windows): open the official download page and wait for Python
                 BeginInvoke((Action)(() =>
                 {
-                    MessageBox.Show("Windows' package manager (winget) isn't available on this PC.\n\n" +
-                        "The Python download page opens now. Install Python (tick \"Add python.exe to PATH\"), " +
-                        "then come back: this setup notices it by itself.", "Install Python", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(T("Windows' package manager (winget) isn't available on this PC.\n\n", "Die Windows-Paketverwaltung (winget) ist auf diesem PC nicht verfügbar.\n\n") +
+                        T("The Python download page opens now. Install Python (tick \"Add python.exe to PATH\"), then come back: this setup notices it by itself.", "Die Python-Downloadseite öffnet sich jetzt. Installiere Python (\"Add python.exe to PATH\" ankreuzen) und komm dann zurück: Das Setup bemerkt es von selbst."), T("Install Python", "Python installieren"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     try { Process.Start(new ProcessStartInfo("https://www.python.org/downloads/windows/") { UseShellExecute = true }); } catch { }
-                    statusLabel.Text = "Waiting for Python to be installed…";
+                    statusLabel.Text = T("Waiting for Python to be installed…", "Warte auf die Python-Installation…");
                 }));
                 for (int i = 0; i < 400 && FindPython() == null; i++) Thread.Sleep(3000);   // check every 3 s, up to 20 min
             }
@@ -303,19 +309,19 @@ class SetupForm : Form
     public static string Install(bool desktop, bool startup, bool launch, Action<string> Log)
     {
         string python = FindPython();
-        if (python == null) return "Python 3.10 or newer was not found.";
+        if (python == null) return T("Python 3.10 or newer was not found.", "Python 3.10 oder neuer wurde nicht gefunden.");
         string dest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "SlideLink");
         string work = Path.Combine(Path.GetTempPath(), "SlideLink-setup-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         string error = null;
         try
         {
-            Log("Unpacking SlideLink…");
+            Log(T("Unpacking SlideLink…", "SlideLink wird entpackt…"));
             using (var res = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
             using (var zip = new ZipArchive(res, ZipArchiveMode.Read))
                 zip.ExtractToDirectory(work);
-            Log("Installing…");
+            Log(T("Installing…", "Wird installiert…"));
             string args = "-NoProfile -ExecutionPolicy Bypass -File \"" + Path.Combine(work, "install.ps1") + "\" -NoLaunch -Python \"" + python +
-                          "\" -Version " + Program.Version + (desktop ? "" : " -NoDesktop") + (startup ? " -Startup" : "");
+                          "\" -Version \"" + Program.Version + "\"" + (desktop ? "" : " -NoDesktop") + (startup ? " -Startup" : "");
             var psi = new ProcessStartInfo("powershell.exe", args) { UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardOutput = true, RedirectStandardError = true, WorkingDirectory = work };
             using (var p = Process.Start(psi))
@@ -331,7 +337,7 @@ class SetupForm : Form
                 try { if (File.Exists(StartupLink())) File.Delete(StartupLink()); } catch { }
             if (error == null && launch)
             {
-                Log("Starting SlideLink…");
+                Log(T("Starting SlideLink…", "SlideLink wird gestartet…"));
                 Process.Start(new ProcessStartInfo(Path.Combine(Path.GetDirectoryName(python), "pythonw.exe"),
                     "\"" + Path.Combine(dest, "SlideLink.pyw") + "\"") { UseShellExecute = true, WorkingDirectory = dest });
             }
@@ -350,14 +356,14 @@ class SetupForm : Form
             progress.MarqueeAnimationSpeed = 0; progress.Style = ProgressBarStyle.Continuous; progress.Value = error == null ? 100 : 0;
             if (error == null)
             {
-                Log("Done. SlideLink is in your Start menu" + (desktop ? " and on your desktop." : "."));
-                installBtn.Text = "Finish"; done = true;
+                Log(T("Done. SlideLink is in your Start menu", "Fertig. SlideLink ist im Startmenü") + (desktop ? T(" and on your desktop.", " und auf dem Desktop.") : "."));
+                installBtn.Text = T("Finish", "Fertig"); done = true;
             }
             else
             {
                 Log("Error: " + error.Trim());
-                MessageBox.Show("SlideLink could not be installed:\n\n" + error.Trim(), "SlideLink Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                installBtn.Text = "Try again";
+                MessageBox.Show(T("SlideLink could not be installed:\n\n", "SlideLink konnte nicht installiert werden:\n\n") + error.Trim(), "SlideLink Setup", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                installBtn.Text = T("Try again", "Erneut versuchen");
                 desktopBox.Enabled = startupBox.Enabled = launchBox.Enabled = true;
             }
             installBtn.Enabled = cancelBtn.Enabled = true;
