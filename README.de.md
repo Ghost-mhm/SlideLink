@@ -1,3 +1,5 @@
+<p align="center"><img src="static/icon-192.png" width="120" alt="SlideLink-Logo"></p>
+
 # SlideLink
 
 **Am PC präsentieren, alles vom Handy aus steuern.** 🇬🇧 [English version](README.md)

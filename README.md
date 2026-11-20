@@ -1,3 +1,5 @@
+<p align="center"><img src="static/icon-192.png" width="120" alt="SlideLink logo"></p>
+
 # SlideLink
 
 **Present from your PC, control everything from your phone.** 🇩🇪 [Deutsche Version](README.de.md)

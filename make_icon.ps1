@@ -43,14 +43,61 @@ $static = Join-Path $Root 'static'
 Copy-Item $full (Join-Path $static 'icon-1024.png') -Force
 Scale $full 512 (Join-Path $static 'icon-512.png')
 Scale $full 192 (Join-Path $static 'icon-192.png')
+# favicons for the app window / taskbar (Chrome picks the size that matches the display scaling: 100 % = 32, 125 % = 40, 150 % = 48 ...)
+foreach ($n in 256, 128, 96, 64, 48) { Scale $full $n (Join-Path $static "icon-$n.png") }
+Scale $tiny 32 (Join-Path $static 'icon-32.png')
 foreach ($n in 256, 128, 64, 48) { Scale $full $n (Join-Path $out "ico-$n.png") }
 foreach ($n in 32, 24, 16) { Scale $tiny $n (Join-Path $out "ico-$n.png") }
 Scale $full 128 (Join-Path $Root 'chrome-extension\icon128.png')
 Scale $tiny 48 (Join-Path $Root 'chrome-extension\icon48.png')
+Scale $tiny 32 (Join-Path $Root 'chrome-extension\icon32.png')
+Scale $tiny 16 (Join-Path $Root 'chrome-extension\icon16.png')
+
+# Full-bleed variants: the launcher / home screen cuts them into its own shape (circle, squircle, ...).
+# background = the gradient only; foreground = the motif without the tile, inside the safe zone (center ~60%)
+$bgSvg = Join-Path $out 'bg.svg'; $fgSvg = Join-Path $out 'fg.svg'; $maskSvg = Join-Path $out 'maskable.svg'
+$s0 = [IO.File]::ReadAllText($svg)
+$defs = [Text.RegularExpressions.Regex]::Match($s0, '<defs>[\s\S]*?</defs>').Value
+$art = [Text.RegularExpressions.Regex]::Replace([Text.RegularExpressions.Regex]::Match($s0, '</defs>([\s\S]*)</svg>').Groups[1].Value, '<rect x="16" y="16"[^>]*/>', '')
+$head = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">'
+[IO.File]::WriteAllText($bgSvg, "$head$defs<rect width=`"512`" height=`"512`" fill=`"url(#bg)`"/><rect width=`"512`" height=`"512`" fill=`"url(#shine)`"/></svg>")
+[IO.File]::WriteAllText($fgSvg, "$head$defs<g transform=`"translate(256 262) scale(0.58) translate(-256 -246)`">$art</g></svg>")
+[IO.File]::WriteAllText($maskSvg, "$head$defs<rect width=`"512`" height=`"512`" fill=`"url(#bg)`"/><rect width=`"512`" height=`"512`" fill=`"url(#shine)`"/><g transform=`"translate(256 262) scale(0.66) translate(-256 -246)`">$art</g></svg>")
+Render $bgSvg (Join-Path $out 'bg-1024.png'); Render $fgSvg (Join-Path $out 'fg-1024.png'); Render $maskSvg (Join-Path $out 'mask-1024.png')
+Scale (Join-Path $out 'mask-1024.png') 512 (Join-Path $static 'icon-maskable-512.png')
+
+# Android: legacy icon in every density + adaptive icon (Android 8+) from the same layers
+$res = Join-Path $Root 'android\icons'
+$dens = @{ 'mdpi' = 1; 'hdpi' = 1.5; 'xhdpi' = 2; 'xxhdpi' = 3; 'xxxhdpi' = 4 }
+foreach ($d in $dens.Keys) {
+  $dir = Join-Path $res "mipmap-$d"; New-Item -ItemType Directory -Force $dir | Out-Null
+  Scale $full ([int](48 * $dens[$d])) (Join-Path $dir 'ic_launcher.png')
+  Scale (Join-Path $out 'fg-1024.png') ([int](108 * $dens[$d])) (Join-Path $dir 'ic_launcher_fg.png')
+  Scale (Join-Path $out 'bg-1024.png') ([int](108 * $dens[$d])) (Join-Path $dir 'ic_launcher_bg.png')
+}
+$any = Join-Path $res 'mipmap-anydpi-v26'; New-Item -ItemType Directory -Force $any | Out-Null
+[IO.File]::WriteAllText((Join-Path $any 'ic_launcher.xml'), @'
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_bg" />
+    <foreground android:drawable="@mipmap/ic_launcher_fg" />
+    <monochrome android:drawable="@mipmap/ic_launcher_fg" />
+</adaptive-icon>
+'@)
 
 # icon.ico with PNG entries 16..256 (Windows Vista+ reads PNG inside ICO)
 $sizes = 16, 24, 32, 48, 64, 128, 256
-$pngs = $sizes | ForEach-Object { [IO.File]::ReadAllBytes((Join-Path $out "ico-$_.png")) }
+# sizes below 256 as classic 32-bit bitmaps (the taskbar / shell icon loader shows PNG entries only at 256)
+function Dib([string]$png) {
+  $b = [Drawing.Bitmap]::FromFile($png); $n = $b.Width
+  $m = New-Object IO.MemoryStream; $bw = New-Object IO.BinaryWriter $m
+  $bw.Write([UInt32]40); $bw.Write([Int32]$n); $bw.Write([Int32]($n * 2)); $bw.Write([UInt16]1); $bw.Write([UInt16]32)
+  $bw.Write([UInt32]0); $bw.Write([UInt32]0); $bw.Write([Int32]0); $bw.Write([Int32]0); $bw.Write([UInt32]0); $bw.Write([UInt32]0)
+  for ($y = $n - 1; $y -ge 0; $y--) { for ($x = 0; $x -lt $n; $x++) { $c = $b.GetPixel($x, $y); $bw.Write([byte]$c.B); $bw.Write([byte]$c.G); $bw.Write([byte]$c.R); $bw.Write([byte]$c.A) } }
+  $bw.Write((New-Object byte[] ([Math]::Ceiling($n / 32) * 4 * $n)))   # AND mask (unused with alpha)
+  $b.Dispose(); , $m.ToArray()
+}
+$pngs = $sizes | ForEach-Object { $f = Join-Path $out "ico-$_.png"; if ($_ -ge 256) { , [IO.File]::ReadAllBytes($f) } else { Dib $f } }
 $ms = New-Object IO.MemoryStream; $w = New-Object IO.BinaryWriter $ms
 $w.Write([UInt16]0); $w.Write([UInt16]1); $w.Write([UInt16]$sizes.Count)
 $offset = 6 + 16 * $sizes.Count

@@ -3,17 +3,25 @@
   "name": "SlideLink Sync",
   "version": "1.0.0",
   "description": "Copies the slide decks you make on claude.ai into SlideLink on this PC - automatically, whenever you open one.",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage"
+  ],
   "host_permissions": [
     "http://localhost:8765/*",
     "http://127.0.0.1:8765/*",
     "https://*.claudeusercontent.com/*"
   ],
-  "background": { "service_worker": "sw.js" },
+  "background": {
+    "service_worker": "sw.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://*.claudeusercontent.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://*.claudeusercontent.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "all_frames": true,
       "run_at": "document_idle"
     }
@@ -21,7 +29,17 @@
   "action": {
     "default_title": "SlideLink Sync",
     "default_popup": "popup.html",
-    "default_icon": { "48": "icon48.png", "128": "icon128.png" }
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
   },
-  "icons": { "48": "icon48.png", "128": "icon128.png" }
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
 }

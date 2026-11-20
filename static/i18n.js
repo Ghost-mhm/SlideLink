@@ -156,7 +156,7 @@ const I18N_PATTERNS = { de: [
 ] };
 
 // these hold the user's own content: never translated
-const I18N_SKIP = '#notes, .rm-decktext b, .lib-card-t, .lib-item-t > span, .hero-info h1, #rTitle, #title, .rm-deck-t, .lv-poll h3, .lo-poll h2, ' +
+const I18N_SKIP = '.logo, #notes, .rm-decktext b, .lib-card-t, .lib-item-t > span, .hero-info h1, #rTitle, #title, .rm-deck-t, .lv-poll h3, .lo-poll h2, ' +
   '.pbar-t span, .lv-opt > span:not(.n), .grp-m, .s-title, .s-body, .slide, textarea, input, [data-noi18n], #lvPoll h4, .lo-speaker, #crewNow b, .dev-name';
 
 const I18N = (() => {

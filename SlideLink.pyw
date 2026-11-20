@@ -125,6 +125,7 @@ def _focus_existing(name):
                 buf = ctypes.create_unicode_buffer(300)
                 ctypes.windll.user32.GetWindowTextW(ctypes.c_void_p(hwnd), buf, 300)
                 if not _is_presenter_title(buf.value):
+                    _set_window_icon(hwnd)
                     _to_front(hwnd)
                     return True
     return False
@@ -132,14 +133,86 @@ def _focus_existing(name):
 
 # EN: Waits for a new window, brings it to the front and maximizes it if wanted.
 # DE: Wartet auf ein neues Fenster, holt es nach vorne und maximiert es auf Wunsch.
+def _set_window_icon(hwnd):
+    """Window + taskbar icon straight from icon.ico (Windows picks the exact size for the display scaling).
+    Without this the browser window shows a scaled-up page icon, which looks blurry in the taskbar."""
+    u = ctypes.windll.user32
+    u.LoadImageW.restype = ctypes.c_void_p
+    u.SendMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
+    big = u.LoadImageW(None, ICON, 1, u.GetSystemMetrics(11), u.GetSystemMetrics(12), 0x10)    # SM_CXICON, LR_LOADFROMFILE
+    small = u.LoadImageW(None, ICON, 1, u.GetSystemMetrics(49), u.GetSystemMetrics(50), 0x10)  # SM_CXSMICON
+    if big:
+        u.SendMessageW(ctypes.c_void_p(hwnd), 0x0080, ctypes.c_void_p(1), ctypes.c_void_p(big))     # WM_SETICON, ICON_BIG
+    if small:
+        u.SendMessageW(ctypes.c_void_p(hwnd), 0x0080, ctypes.c_void_p(0), ctypes.c_void_p(small))   # ICON_SMALL
+    try:
+        _set_taskbar_identity(hwnd)
+    except Exception as e:                     # never let the icon stop the window from opening
+        print("taskbar identity:", e)
+
+
+APP_ID = "SlideLink.Desktop"
+
+
+def _set_taskbar_identity(hwnd):
+    """Registers the browser window with Windows as the SlideLink app (own app id + icon.ico).
+    The taskbar then shows SlideLink's sharp icon, not the browser's scaled-up page icon, and groups it as its own app."""
+    import uuid as _uuid
+
+    class GUID(ctypes.Structure):
+        _fields_ = [("d1", ctypes.c_uint32), ("d2", ctypes.c_uint16), ("d3", ctypes.c_uint16), ("d4", ctypes.c_ubyte * 8)]
+
+        def __init__(self, s):
+            u = _uuid.UUID(s)
+            super().__init__(u.time_low, u.time_mid, u.time_hi_version, (ctypes.c_ubyte * 8)(*u.bytes[8:]))
+
+    class PROPERTYKEY(ctypes.Structure):
+        _fields_ = [("fmtid", GUID), ("pid", ctypes.c_uint32)]
+
+    class PROPVARIANT(ctypes.Structure):
+        _fields_ = [("vt", ctypes.c_ushort), ("r1", ctypes.c_ushort), ("r2", ctypes.c_ushort), ("r3", ctypes.c_ushort),
+                    ("pwsz", ctypes.c_wchar_p), ("pad", ctypes.c_void_p)]
+
+    fmt = "{9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3}"       # PKEY_AppUserModel_*
+    pyw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+    values = [(5, APP_ID)]                                # own app id: the taskbar then uses the window icon (icon.ico)
+
+    store = ctypes.c_void_p()
+    iid = GUID("{886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99}")  # IID_IPropertyStore
+    if ctypes.windll.shell32.SHGetPropertyStoreForWindow(ctypes.c_void_p(hwnd), ctypes.byref(iid), ctypes.byref(store)) != 0:
+        return
+    vtbl = ctypes.cast(ctypes.cast(store, ctypes.POINTER(ctypes.c_void_p))[0], ctypes.POINTER(ctypes.c_void_p))
+    set_value = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_void_p, ctypes.POINTER(PROPERTYKEY), ctypes.POINTER(PROPVARIANT))(vtbl[6])
+    commit = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_void_p)(vtbl[7])
+    release = ctypes.WINFUNCTYPE(ctypes.c_ulong, ctypes.c_void_p)(vtbl[2])
+    try:
+        for pid, text in values[1:] + values[:1]:         # the id last: Windows reads the relaunch data when the id changes
+            key = PROPERTYKEY(GUID(fmt), pid)
+            pv = PROPVARIANT(31, 0, 0, 0, text, None)     # VT_LPWSTR
+            set_value(store, ctypes.byref(key), ctypes.byref(pv))
+        commit(store)
+    finally:
+        release(store)
+
+
+def _keep_icon(pid, seconds=20):
+    """The browser sets its own icon again while the page loads: set ours a few more times."""
+    for _ in range(int(seconds / 2)):
+        for hwnd in _windows_of(pid):
+            _set_window_icon(hwnd)
+        time.sleep(2)
+
+
 def _front_when_ready(p, maximize=False):
     for _ in range(40):                     # bring the new window to the front once it exists (max ~10 s)
         time.sleep(0.25)
         wins = _windows_of(p.pid)
         if wins:
+            _set_window_icon(wins[0])
             _to_front(wins[0])
             if maximize:                    # Chrome restores its remembered size; maximize it ourselves
                 ctypes.windll.user32.ShowWindow(ctypes.c_void_p(wins[0]), 3)   # SW_MAXIMIZE
+            threading.Thread(target=_keep_icon, args=(p.pid,), daemon=True).start()
             return
 
 
@@ -439,7 +512,7 @@ def main():
                 time.sleep(0.5)
             _ask_running_instance_to_show()
         return
-    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("SlideLink.Desktop")
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
     import server
     from http.server import ThreadingHTTPServer
     server.ON_SHOW_PC = show_presenter                                     # "Show on PC" from the phone: borderless fullscreen

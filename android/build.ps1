@@ -15,7 +15,7 @@ New-Item -ItemType Directory -Force "$out\res\mipmap-xxxhdpi", "$out\gen", "$out
 # 1. (no PC addresses are built in: the app learns them from SlideLink at runtime, so the APK is the same for everyone)
 
 # 2. resources + manifest
-Copy-Item (Join-Path (Split-Path $here) 'static\icon-192.png') "$out\res\mipmap-xxxhdpi\ic_launcher.png"
+Copy-Item (Join-Path $here 'icons\*') "$out\res\" -Recurse -Force    # all densities + adaptive icon (make_icon.ps1)
 & "$bt\aapt2.exe" compile --dir "$out\res" -o "$out\res.zip"; if ($LASTEXITCODE) { throw 'aapt2 compile failed' }
 & "$bt\aapt2.exe" link -I $jar --manifest "$here\AndroidManifest.xml" -o "$out\base.apk" --java "$out\gen" "$out\res.zip" --min-sdk-version 26 --target-sdk-version 35
 if ($LASTEXITCODE) { throw 'aapt2 link failed' }
