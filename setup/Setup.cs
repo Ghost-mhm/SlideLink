@@ -15,14 +15,14 @@ using Microsoft.Win32;
 
 [assembly: AssemblyTitle("SlideLink Setup")]
 [assembly: AssemblyProduct("SlideLink")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 // EN: Entry point: window, silent install (/S) or a picture of the window (/Snapshot).
 // DE: Einstieg: Fenster, stille Installation (/S) oder ein Bild des Fensters (/Snapshot).
 static class Program
 {
-    public const string Version = "1.0";
+    public const string Version = "1.1.0";
 
     [STAThread]
     // EN: Starts the setup in the chosen mode.
