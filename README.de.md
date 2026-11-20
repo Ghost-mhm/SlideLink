@@ -34,7 +34,7 @@ hält PC und Handy live synchron und lässt Claude Präsentationen direkt in der
 - **Bibliothek:** „＋ Präsentation hinzufügen“ (PowerPoint, Deck-.zip, HTML, PDF-Doc, Bilder) ersetzt „Neue Präsentation“; jede Kachel hat ein ⋯-Menü (Titel und Sprechernotizen bearbeiten, duplizieren, löschen); der Sync-Status ist ein kleines Abzeichen am Ordner-Knopf.
 - **Neues Logo** in hoher Auflösung; Verknüpfte Geräte hat jetzt ein 🔗-Ketten-Symbol.
 
-## Beta 1.1.0: Publikum, Live-Umfragen, Präsentieren in der Gruppe
+## Neu in 1.1.0: Publikum, Live-Umfragen, Präsentieren in der Gruppe
 - **Publikums-Link** (`/live?k=…`): Zuschauer scannen einen QR-Code (auch groß auf der Leinwand) und sehen die aktuelle Folie live im Browser ihres Handys. Nur ansehen: keine Steuerung, keine Sprechernotizen. *New link* macht den alten Link ungültig.
 - **Live-Umfragen:** Am Handy (👥 Live) eine Umfrage mit 2-4 Antworten starten. Das Publikum stimmt auf der Publikumsseite ab (eine Stimme pro Handy); das Ergebnis lässt sich live als Balken auf der Leinwand zeigen.
 - **Present in group:** Gruppen-Sitzung am PC oder Admin-Handy starten. Mitvortragende scannen einen QR-Code und treten mit ihrem Namen bei, im Browser (auch iPhone) oder in der Android-App. Sie steuern nur den Vortrag (Folien, Umfragen, Notizen, *I'm presenting*), bearbeiten oder wechseln nie Präsentationen und fliegen raus, wenn die Sitzung endet (*End group session* am PC oder Admin-Handy, oder automatisch nach 4 Stunden). Nichts bleibt verknüpft.

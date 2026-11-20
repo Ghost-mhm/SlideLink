@@ -259,7 +259,7 @@ function renderLiveSheet() {
   }
   if ($('#lvGroup')) setHTML($('#lvGroup'), groupAdminHTML());
   const a = S.audience || {};
-  setHTML($('#lvAud'), `<h4>👥 Audience <small class="beta">BETA</small></h4>
+  setHTML($('#lvAud'), `<h4>👥 Audience</h4>
     <p class="muted">${a.count || 0} watching. Viewers scan the QR code and follow the slides live, watch only.</p>
     <div class="lv-row"><button data-live="qr" class="${a.qr ? 'on' : ''}">${a.qr ? 'Hide QR on screen' : '📺 Show QR on screen'}</button>
       <button data-live="copy">Copy link</button></div>
@@ -287,7 +287,7 @@ function renderLiveSheet() {
   }
   const names = [...new Set(['PC', ...(S.linked || []).filter(d => d.type !== 'host').map(d => d.name),
     ...((S.group && (S.group.names || (S.group.members || []).map(m => m.name))) || [])])];
-  setHTML($('#lvCrew'), `<h4>🎤 Who is presenting? <small class="beta">BETA</small></h4>
+  setHTML($('#lvCrew'), `<h4>🎤 Who is presenting?</h4>
     <div class="lv-names">${names.map(n => `<button data-live="speaker" data-name="${esc(n)}" class="${S.speaker && S.speaker.name === n ? 'on' : ''}">${esc(n)}</button>`).join('')}
     <button data-live="speaker" data-name="" class="${S.speaker ? '' : 'on'}">Nobody</button></div>`);
 }
