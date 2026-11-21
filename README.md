@@ -29,6 +29,9 @@ keeps PC and phone in sync live, and lets Claude build presentations directly in
 - Battery friendly: still preview by default, 12 fps when live, dims while presenting, pauses in the background
 - Updates itself from your PC
 
+## New in 1.3.3: new desktop design
+- The desktop app gets the same calm look and SlideLink's own icons as the phone.
+
 ## New in 1.3.2: new phone design, signed updates
 - **New phone design:** calmer, cleaner remote with SlideLink's own icons (app 1.15).
 - **Phone app updates itself through the PC:** SlideLink pulls the newest Android app from GitHub and offers it to every connected phone.

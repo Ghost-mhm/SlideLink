@@ -43,8 +43,8 @@ function groupByDay(list) {
 function tabsHTML(decks, current, attr) {
   const n = k => decks.filter(d => deckKind(d) === k).length;
   return `<div class="lib-tabs" role="tablist">
-    <button role="tab" ${attr}="deck" class="${current === 'deck' ? 'on' : ''}">📽 Presentations <small>${n('deck')}</small></button>
-    <button role="tab" ${attr}="doc" class="${current === 'doc' ? 'on' : ''}">📄 Docs <small>${n('doc')}</small></button>
+    <button role="tab" ${attr}="deck" class="${current === 'deck' ? 'on' : ''}">${IC('deck')}<span>Presentations</span> <small>${n('deck')}</small></button>
+    <button role="tab" ${attr}="doc" class="${current === 'doc' ? 'on' : ''}">${IC('doc')}<span>Docs</span> <small>${n('doc')}</small></button>
   </div>`;
 }
 // EN: 'Document' or 'n slides'.
@@ -81,20 +81,20 @@ function initLibrary() {
   <div class="lib">
     <aside class="lib-side">
       <div class="lib-brand"><img src="/icon.svg" alt="" width="30" height="30"><div class="logo">Slide<span>Link</span></div>
-        <button class="settings-btn" id="setBtn" title="Settings" aria-label="Settings">⚙</button></div>
-      <button class="lib-home-btn" id="homeBtn">▦ Library home</button>
+        <button class="settings-btn" id="setBtn" title="Settings" aria-label="Settings">${IC('settings')}</button></div>
+      <button class="lib-home-btn" id="homeBtn">${IC('home')}<span>Library home</span></button>
       <div id="libTabs"></div>
       <input id="libSearch" placeholder="Search" aria-label="Search">
       <div class="lib-list" id="libList"></div>
       <div class="lib-side-foot">
         <div class="up-status" id="upStatus"></div>
-        <button class="primary" id="uploadBtn" style="width:100%" title="PowerPoint, claude.ai deck (.zip), HTML, PDF doc, images – or drag files here">＋ Add presentation</button>
+        <button class="primary" id="uploadBtn" style="width:100%" title="PowerPoint, claude.ai deck (.zip), HTML, PDF doc, images – or drag files here">${IC('plus')}<span>Add presentation</span></button>
         <button id="watchBtn" class="watch-btn" style="width:100%" title="Everything Claude saves in this folder appears here automatically">
-          <span>📁 Claude Presentations</span><span class="sync-badge" id="syncBadge" hidden></span></button>
+          <span class="wb-l">${IC('folder')}<span>Claude Presentations</span></span><span class="sync-badge" id="syncBadge" hidden></span></button>
         <input type="file" id="uploadInput" multiple hidden
           accept=".pptx,.ppt,.odp,.ppsx,.pps,.potx,.zip,.json,.html,.htm,.pdf,.png,.jpg,.jpeg,.webp,.gif">
-        <button id="audBtn" style="width:100%">👥 Group & audience</button>
-        <button id="devBtn" style="width:100%">🔗 Linked devices <span class="count" id="devCount"></span></button>
+        <button id="audBtn" style="width:100%">${IC('group')}<span>Group & audience</span></button>
+        <button id="devBtn" style="width:100%">${IC('devices')}<span>Linked devices</span> <span class="count" id="devCount"></span></button>
       </div>
     </aside>
     <main class="lib-main" id="libMain"><div class="muted" style="padding:40px">Loading your presentations…</div></main>
@@ -193,8 +193,8 @@ function openCardMenu(btn) {
   if (!deck) return;
   const m = document.createElement('div');
   m.className = 'card-menu'; m.id = 'cardMenu';
-  m.innerHTML = `<button data-cm="edit">✎ Edit</button><button data-cm="duplicate">⧉ Duplicate</button>
-    <button data-cm="delete" class="danger">🗑 Delete</button>`;
+  m.innerHTML = `<button data-cm="edit">${IC('edit')}<span>Edit</span></button><button data-cm="duplicate">${IC('copy')}<span>Duplicate</span></button>
+    <button data-cm="delete" class="danger">${IC('trash')}<span>Delete</span></button>`;
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
   m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 6) + 'px';
@@ -307,7 +307,7 @@ function statusBar(counts, total) {
 const plural = n => `${n} slide${n === 1 ? '' : 's'}`;
 // EN: 'From claude.ai' label.
 // DE: Kennzeichnung 'From claude.ai'.
-const sourceLabel = d => d.source && (d.source.kind === 'claude-slides' || d.source.kind === 'doc') ? '✦ From claude.ai' : '';
+const sourceLabel = d => d.source && (d.source.kind === 'claude-slides' || d.source.kind === 'doc') ? 'From claude.ai' : '';
 
 // EN: Draws the list, the overview grid or the detail view.
 // DE: Zeichnet die Liste, das Übersichtsraster oder die Detailansicht.
@@ -343,7 +343,7 @@ function renderLibrary() {
         ${days.map(g => `<h3 class="lib-dayhead">${esc(g.label)}</h3>
         <div class="lib-grid">${g.items.map(d => `
           <div class="lib-card ${deckKind(d)}" data-id="${esc(d.id)}">
-            <button class="card-more" data-more="${esc(d.id)}" title="More" aria-label="More">⋯</button>
+            <button class="card-more" data-more="${esc(d.id)}" title="More" aria-label="More">${IC('more')}</button>
             <div class="lib-card-cover">${coverHTML(d)}${d.id === LIB.active ? '<span class="badge badge-live lib-badge">OPEN</span>' : ''}</div>
             <div class="lib-card-t">${esc(d.title)}</div>
             <div class="lib-card-m"><span>${countLabel(d)}</span><span class="src">${sourceLabel(d)}</span></div>
@@ -358,7 +358,7 @@ function renderLibrary() {
   const slidesGrid = cached ? cached.slides.map((s, i) => `
       <div class="lib-slide"><div class="lib-slide-cover">${slideHTML(s, cached, i)}</div>
         <div class="lib-slide-m"><span class="n">${i + 1}</span><span class="t">${esc(s.title || 'Untitled')}</span>
-        <button class="mini" data-act="goto" data-id="${esc(d.id)}" data-i="${i}" title="Present from this slide">▶</button></div></div>`).join('')
+        <button class="mini" data-act="goto" data-id="${esc(d.id)}" data-i="${i}" title="Present from this slide">${IC('play')}</button></div></div>`).join('')
     : '<div class="muted">Loading slides…</div>';
   setHTML(main, `
     <div class="lib-detail">
@@ -370,9 +370,9 @@ function renderLibrary() {
           <div class="hero-meta">${countLabel(d)} · ${esc(dayLabel(deckDate(d)))}${d.id === LIB.active ? ' · <b class="live">● open on all devices</b>' : ''}</div>
           ${statusBar(d.status_counts || {}, d.slide_count)}
           <div class="hero-actions">
-            <button class="play" data-act="present" data-id="${esc(d.id)}">▶ PRESENT</button>
-            <button data-act="edit" data-id="${esc(d.id)}">✎ Edit</button>
-            <button data-act="remote" data-id="${esc(d.id)}">📱 Remote</button>
+            <button class="play" data-act="present" data-id="${esc(d.id)}">${IC('play')}<span>Present</span></button>
+            <button data-act="edit" data-id="${esc(d.id)}">${IC('edit')}<span>Edit</span></button>
+            <button data-act="remote" data-id="${esc(d.id)}">${IC('devices')}<span>Remote</span></button>
           </div>
           <div class="hero-more">
             <button class="link" data-act="duplicate" data-id="${esc(d.id)}">Duplicate</button>

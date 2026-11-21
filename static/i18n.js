@@ -10,7 +10,7 @@ const I18N_LANGS = { en: 'English', de: 'Deutsch' };
 
 const I18N_DICT = { de: {
   // library, editor, presenter
-  'Library': 'Bibliothek', '▦ Library home': '▦ Bibliothek', 'Search': 'Suchen', 'Presentations': 'Präsentationen',
+  'Library': 'Bibliothek', 'Library home': 'Bibliothek', 'Edit': 'Bearbeiten', 'Remote': 'Fernbedienung', 'Present': 'Präsentieren', 'Group & audience': 'Gruppe & Publikum', 'Claude Presentations': 'Claude Presentations', 'Add presentation': 'Präsentation hinzufügen', '▦ Library home': '▦ Bibliothek', 'Search': 'Suchen', 'Presentations': 'Präsentationen',
   '📽 Presentations': '📽 Präsentationen', '📄 Docs': '📄 Docs', 'Docs': 'Docs', 'Today': 'Heute', 'Yesterday': 'Gestern',
   '＋ New presentation': '＋ Neue Präsentation', '⬆ Upload presentation': '⬆ Präsentation hochladen',
   '📁 Claude Presentations': '📁 Claude Presentations', '⚙ Linked devices': '⚙ Verknüpfte Geräte', '🔗 Linked devices': '🔗 Verknüpfte Geräte',

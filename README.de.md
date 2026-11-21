@@ -29,6 +29,9 @@ hält PC und Handy live synchron und lässt Claude Präsentationen direkt in der
 - Akkuschonend: standardmäßig Standbild-Vorschau, 12 fps im Live-Modus, dimmt beim Präsentieren, pausiert im Hintergrund
 - Aktualisiert sich selbst über deinen PC
 
+## Neu in 1.3.3: neues Desktop-Design
+- Die Desktop-App bekommt dieselbe ruhige Optik und die eigenen SlideLink-Icons wie das Handy.
+
 ## Neu in 1.3.2: neues Handy-Design, signierte Updates
 - **Neues Handy-Design:** ruhigere, aufgeräumte Fernbedienung mit eigenen SlideLink-Icons (App 1.15).
 - **Handy-App aktualisiert sich über den PC:** SlideLink holt die neueste Android-App von GitHub und bietet sie jedem verbundenen Handy an.
