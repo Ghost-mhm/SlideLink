@@ -80,7 +80,7 @@ angegeben. Der PC selbst (`127.0.0.1` ohne Proxy-Header) ist immer vertrauenswü
 | `GET /events?role=…&client=…[&appv=…]` | **Server-Sent Events**: kompletter Zustand bei jeder Änderung, Ping alle 10 s |
 | `GET /api/state` | Aktueller Zustand |
 | `GET /api/library`, `/api/library/<id>` | Liste der Decks / ein vollständiges Deck |
-| `GET /api/info` | Port, Adressen für Handys (WLAN, Tailscale), Tailscale-Status |
+| `GET /api/info` | Port, Adressen für Handys (Relay, WLAN-HTTPS und -HTTP), Relay-Status, Fingerabdruck des WLAN-Zertifikats |
 | `GET /api/whoami` | Ist dieses Gerät verknüpft? (ohne Anmeldung) |
 | `GET /api/watch` | Status der Ordnerüberwachung |
 | `POST /api/op` | Eine Operation ausführen (Tabelle unten) |
@@ -118,8 +118,9 @@ Operationen: `poll_start` `{question, options}`, `poll_show` `{on}`, `poll_end`,
 - Verknüpfung: einmaliger 6-stelliger Code, 10 Minuten gültig, nach 8 Fehlversuchen ungültig; Tokens sind 256-Bit-
   Zufallswerte und werden nur als SHA-256-Hash gespeichert; beim Entfernen wird die Live-Verbindung des Geräts sofort getrennt.
 - Handys und Tablets sind **nur Fernbedienung**: Sie dürfen die oben genannten Fernbedienungs-Operationen ausführen, nie bearbeiten.
-- Anfragen von `127.0.0.1` mit Proxy-Headern (`X-Forwarded-For`, `Tailscale-*`, …) gelten als entfernte Geräte. Wird der
-  Port über Tailscale Funnel oder einen anderen Proxy veröffentlicht, bekommt dadurch niemand PC-Rechte.
+- Anfragen von `127.0.0.1` mit Proxy-Headern (`X-Forwarded-For`, `X-SlideLink-Relay`, …) gelten als entfernte Geräte. So
+  bekommt über das Relay oder einen anderen Proxy niemand PC-Rechte. Zudem muss der PC seinen eigenen lokalen Namen
+  nutzen (`localhost`, `127.0.0.1`), damit keine Webseite ihn per DNS-Rebinding erreicht.
 - POST-Anfragen müssen JSON vom selben Ursprung sein (CSRF-Schutz); `/api/import` akzeptiert nur claude.ai.
 - Gestaltete Folien laufen in abgeschotteten iframes (`allow-scripts allow-forms`, kein Same-Origin-Zugriff).
 

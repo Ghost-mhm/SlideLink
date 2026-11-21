@@ -17,7 +17,7 @@ UA = {"User-Agent": "SlideLink-Updater", "Accept": "application/vnd.github+json"
 def parse(v):
     """'v1.2.1' / '1.2.1 beta' -> ((1, 2, 1), stable?) so that 1.2.1 beta < 1.2.1 < 1.2.2."""
     nums = tuple(int(n) for n in re.findall(r"\d+", (v or "").split("-")[0].split(" ")[0])[:3])
-    stable = not re.search(r"beta|alpha|rc|pre", v or "", re.I)
+    stable = not re.search(r"beta|alpha|rc|pre|test", v or "", re.I)
     return nums + (0,) * (3 - len(nums)), int(stable)
 
 

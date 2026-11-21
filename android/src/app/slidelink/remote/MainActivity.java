@@ -7,6 +7,9 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.net.http.SslCertificate;
+import android.net.http.SslError;
+import android.webkit.SslErrorHandler;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -39,13 +42,19 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.net.HttpURLConnection;
+import java.security.MessageDigest;
+import java.security.cert.X509Certificate;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * SlideLink remote for Android: the phone remote of the SlideLink desktop app in a full-screen app.
- * Finds the PC by itself (Tailscale name, Tailscale IP, home Wi-Fi), never shows a blank screen
+ * Finds the PC by itself (home Wi-Fi, SlideLink Relay), never shows a blank screen
  * (a clear "PC not reachable" screen that keeps retrying), keeps the screen on and maps the volume keys
  * to Next / Back.
  */
@@ -65,7 +74,8 @@ public class MainActivity extends Activity {
     private LinearLayout offline;
     private TextView offlineText;
     private ProgressBar spinner;
-    private String base;            // the PC address in use, e.g. http://my-pc.tailnet.ts.net:8765
+    static MainActivity current;    // for the updater: downloads from the PC's Wi-Fi HTTPS use the same certificate pin
+    private String base;            // the PC address in use, e.g. http://192.168.1.20:8765 or the relay address
     private boolean searching;
     private final Runnable autoRetry = this::findPc;
     private final Runnable recheck = this::findPc;
@@ -122,11 +132,19 @@ public class MainActivity extends Activity {
             prefs.edit().putString("lan", urls == null ? "" : urls.trim()).apply();
             ui.post(() -> scheduleRecheck(500));     // maybe we are at home right now
         }
-        /** The PC's addresses from outside home (HTTPS first, then Tailscale). Nothing is built into the app. */
+        /** The PC's addresses from outside home (the SlideLink Relay). Nothing is built into the app. */
+        /** Fingerprint of the PC's own HTTPS certificate for the home Wi-Fi. Taken over only from a trusted
+         *  connection (relay HTTPS or the pinned Wi-Fi address), or once when none is known yet. */
+        @JavascriptInterface public void setCertPin(String sha256) {
+            if (sha256 == null || !sha256.matches("[0-9a-f]{64}")) return;
+            String now = prefs.getString("pin", "");
+            boolean trusted = base != null && base.startsWith("https://");
+            if (now.isEmpty() || trusted) prefs.edit().putString("pin", sha256).apply();
+        }
         @JavascriptInterface public void setRemoteUrls(String urls) {
             prefs.edit().putString("remote", urls == null ? "" : urls.trim()).apply();
         }
-        /** The app keeps the login itself, so it works at every address (HTTPS, Tailscale, Wi-Fi). */
+        /** The app keeps the login itself, so it works at every address (relay, Wi-Fi). */
         @JavascriptInterface public String getToken() { return prefs.getString("token", ""); }
         @JavascriptInterface public void setToken(String t) {
             String old = prefs.getString("token", "");
@@ -142,6 +160,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        current = this;
         prefs = getSharedPreferences("slidelink", MODE_PRIVATE);
         updater = new Updater(this);
         L.lang = prefs.getString("lang", L.lang);       // last language of the admin, else the phone's
@@ -187,7 +206,15 @@ public class MainActivity extends Activity {
             // DE: Hält die Navigation innerhalb von SlideLink (andere Links öffnen sich nicht in der App).
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
-                return base == null || !req.getUrl().toString().startsWith(base);   // stay inside SlideLink
+                return base == null || !req.getUrl().toString().startsWith(origin(base));   // stay inside SlideLink
+            }
+
+            // EN: The PC's own certificate on the home Wi-Fi: accepted only if it is exactly the paired PC's.
+            // DE: Das eigene Zertifikat des PCs im Heim-WLAN: nur akzeptiert, wenn es genau das des gekoppelten PCs ist.
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                byte[] der = SslCertificate.saveState(error.getCertificate()).getByteArray("x509-certificate");
+                if (der != null && pinMatches(der)) handler.proceed(); else handler.cancel();
             }
         });
         web.setVisibility(View.INVISIBLE);
@@ -210,20 +237,20 @@ public class MainActivity extends Activity {
 
     // ---------- finding the PC ----------
 
-    // EN: Addresses to try, in order: home Wi-Fi first when on Wi-Fi, then HTTPS, then the rest.
-    // DE: Adressen zum Ausprobieren, der Reihe nach: im WLAN zuerst Heim-WLAN, dann HTTPS, dann der Rest.
+    // EN: Addresses to try, in order: home Wi-Fi first when on Wi-Fi, then the relay, then the rest.
+    // DE: Adressen zum Ausprobieren, der Reihe nach: im WLAN zuerst Heim-WLAN, dann das Relay, dann der Rest.
     private List<String> candidates() {
         List<String> list = new ArrayList<>();
         // same Wi-Fi as the PC? then the direct Wi-Fi way first (fast, works without internet)
         if (onWifi()) {
             for (String a : prefs.getString("lan", "").split(" ")) if (!a.isEmpty() && !list.contains(a)) list.add(a);
         }
-        // everywhere else: HTTPS over the internet, then Tailscale (addresses learned from the PC)
+        // everywhere else: the SlideLink Relay over the internet (address learned from the PC)
         String[] remote = prefs.getString("remote", "").split(" ");
         for (String a : remote) if (a.startsWith("https://") && !list.contains(a)) list.add(a);
         for (String a : remote) if (!a.isEmpty() && !list.contains(a)) list.add(a);
         String saved = prefs.getString("base", null);
-        // login known: HTTPS (works without Tailscale) first; otherwise the address that still has the login
+        // login known: the relay first; otherwise the address that still has the login
         boolean haveToken = !prefs.getString("token", "").isEmpty();
         if (saved != null && !haveToken) list.add(saved);
         if (saved != null && !list.contains(saved)) list.add(saved);
@@ -284,7 +311,7 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             String found = null;
             for (String a : list) {
-                boolean lan = a.startsWith("http://") && !a.contains(".ts.net") && !a.startsWith("http://100.");
+                boolean lan = isLan(a);   // relay addresses end in /p/<pc-id>
                 if (reachable(a, lan ? 1200 : 4000)) { found = a; break; }   // a home address answers fast or not at all
             }
             final String result = found;
@@ -301,10 +328,11 @@ public class MainActivity extends Activity {
 
     // EN: True if SlideLink answers at this address within the timeout.
     // DE: True, wenn SlideLink an dieser Adresse innerhalb des Zeitlimits antwortet.
-    private static boolean reachable(String address, int timeoutMs) {
+    private boolean reachable(String address, int timeoutMs) {
         HttpURLConnection c = null;
         try {
             c = (HttpURLConnection) new URL(address + "/api/whoami").openConnection();
+            if (c instanceof HttpsURLConnection && isLan(address)) pinned((HttpsURLConnection) c);
             c.setConnectTimeout(timeoutMs);
             c.setReadTimeout(timeoutMs);
             return c.getResponseCode() < 500;
@@ -313,6 +341,54 @@ public class MainActivity extends Activity {
         } finally {
             if (c != null) c.disconnect();
         }
+    }
+
+    // EN: scheme://host:port of an address (relay addresses end in /p/<pc-id>, but the pages live at the root).
+    // DE: schema://host:port einer Adresse (Relay-Adressen enden auf /p/<pc-id>, die Seiten liegen aber im Stamm).
+    private static String origin(String address) {
+        int i = address.indexOf('/', address.indexOf("://") + 3);
+        return i < 0 ? address : address.substring(0, i);
+    }
+
+    // EN: True for the PC's home Wi-Fi addresses (from the PC's own address list), not the relay.
+    // DE: True für die Heim-WLAN-Adressen des PCs (aus seiner eigenen Adressliste), nicht das Relay.
+    boolean isLan(String address) {
+        for (String e : prefs.getString("lan", "").split(" ")) if (!e.isEmpty() && address.startsWith(e)) return true;
+        return false;
+    }
+
+    // EN: True if a certificate is exactly the paired PC's own one (SHA-256 of its bytes).
+    // DE: True, wenn ein Zertifikat genau das eigene des gekoppelten PCs ist (SHA-256 seiner Bytes).
+    private boolean pinMatches(byte[] der) {
+        String pin = prefs.getString("pin", "");
+        if (pin.isEmpty()) return false;
+        try {
+            StringBuilder sb = new StringBuilder();
+            for (byte b : MessageDigest.getInstance("SHA-256").digest(der)) sb.append(String.format("%02x", b));
+            return MessageDigest.isEqual(sb.toString().getBytes(), pin.getBytes());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // EN: Lets a connection trust only the paired PC's certificate (any name: the PC is identified by the certificate).
+    // DE: Lässt eine Verbindung nur dem Zertifikat des gekoppelten PCs vertrauen (beliebiger Name: der PC wird am Zertifikat erkannt).
+    void pinned(HttpsURLConnection c) throws Exception {
+        TrustManager tm = new X509TrustManager() {
+            public void checkClientTrusted(X509Certificate[] chain, String type) { }
+            public void checkServerTrusted(X509Certificate[] chain, String type) throws java.security.cert.CertificateException {
+                try {
+                    if (chain == null || chain.length == 0 || !pinMatches(chain[0].getEncoded())) throw new java.security.cert.CertificateException("not the paired PC");
+                } catch (java.security.cert.CertificateEncodingException e) {
+                    throw new java.security.cert.CertificateException(e);
+                }
+            }
+            public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+        };
+        SSLContext ctx = SSLContext.getInstance("TLS");
+        ctx.init(null, new TrustManager[]{tm}, null);
+        c.setSSLSocketFactory(ctx.getSocketFactory());
+        c.setHostnameVerifier((host, session) -> true);
     }
 
     // EN: Opens the remote at an address (hands over the login cookie first).
@@ -326,7 +402,10 @@ public class MainActivity extends Activity {
         String token = prefs.getString("token", "");
         if (!token.isEmpty()) {                 // hand the login to this address before the page loads
             CookieManager cm = CookieManager.getInstance();
-            cm.setCookie(address, "sl_token=" + token + "; Path=/; Max-Age=315360000; SameSite=Lax"
+            // on the relay each PC's cookies carry its id (sl_token__<pc-id>), so other PCs there never get them
+            int pi = address.indexOf("/p/");
+            String name = pi >= 0 ? "sl_token__" + address.substring(pi + 3).split("[/?]")[0] : "sl_token";
+            cm.setCookie(address, name + "=" + token + "; Path=/; Max-Age=315360000; SameSite=Lax"
                     + (address.startsWith("https") ? "; Secure" : ""));
             cm.flush();
         }
@@ -340,7 +419,7 @@ public class MainActivity extends Activity {
         web.setVisibility(View.INVISIBLE);
         offline.setVisibility(View.VISIBLE);
         spinner.setVisibility(View.GONE);
-        offlineText.setText(why + "\n\nIs SlideLink running on the PC, and is Tailscale switched on on this phone?\nTrying again automatically…");
+        offlineText.setText(why + "\n\nIs SlideLink running on the PC, and does this phone have internet?\nTrying again automatically…");
         ui.removeCallbacks(autoRetry);
         ui.postDelayed(autoRetry, 5000);
     }

@@ -79,7 +79,7 @@ The PC itself (`127.0.0.1` without proxy headers) is always trusted.
 | `GET /events?role=…&client=…[&appv=…]` | **Server-Sent Events**: full state on every change, ping every 10 s |
 | `GET /api/state` | Current state snapshot |
 | `GET /api/library`, `/api/library/<id>` | Deck list / one full deck |
-| `GET /api/info` | Ports, addresses for phones (Wi-Fi, Tailscale), Tailscale status |
+| `GET /api/info` | Ports, addresses for phones (relay, Wi-Fi HTTPS and HTTP), relay status, Wi-Fi certificate fingerprint |
 | `GET /api/whoami` | Is this device linked? (no auth) |
 | `GET /api/watch` | Folder watcher status |
 | `POST /api/op` | Run an operation (table below) |
@@ -117,8 +117,9 @@ Operations: `poll_start` `{question, options}`, `poll_show` `{on}`, `poll_end`, 
 - Linking: one-time 6-digit code, valid 10 minutes, invalid after 8 wrong tries; tokens are 256-bit random values,
   stored only as SHA-256 hashes; unlinking kicks the device's live connection at once.
 - Phones and tablets are **remote only**: they may run the remote operations listed above, never edit.
-- Requests from `127.0.0.1` that carry proxy headers (`X-Forwarded-For`, `Tailscale-*`, …) are treated as remote
-  devices, so publishing the port through Tailscale Funnel or another proxy never grants PC rights.
+- Requests from `127.0.0.1` that carry proxy headers (`X-Forwarded-For`, `X-SlideLink-Relay`, …) are treated as remote
+  devices, so the relay or any other proxy never grants PC rights. The PC also has to use its own local name
+  (`localhost`, `127.0.0.1`), so a website can't reach it by pointing its name at 127.0.0.1 (DNS rebinding).
 - POST requests must be JSON from the same origin (CSRF protection); `/api/import` only accepts claude.ai origins.
 - Designed slides run in sandboxed iframes (`allow-scripts allow-forms`, no same-origin access).
 

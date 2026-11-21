@@ -185,6 +185,8 @@ final class Updater {
     // DE: Lädt eine URL in den Speicher (mit Größenlimit).
     private static byte[] get(String url, int max) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        if (c instanceof javax.net.ssl.HttpsURLConnection && MainActivity.current != null && MainActivity.current.isLan(url))
+            MainActivity.current.pinned((javax.net.ssl.HttpsURLConnection) c);   // the PC's own Wi-Fi certificate
         c.setConnectTimeout(5000);
         c.setReadTimeout(30000);
         c.setUseCaches(false);

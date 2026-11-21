@@ -35,7 +35,7 @@ No address is built into the APK; everything is learned at runtime and stored in
 | Key | Content | Source |
 |---|---|---|
 | `lan` | The PC's home-Wi-Fi addresses (`http://192.168.x.y:8765`, `http://<pc>.local:8765`) | page → `setLanUrls()` after connecting |
-| `remote` | HTTPS (Tailscale Funnel) first, then Tailscale addresses | page → `setRemoteUrls()` |
+| `remote` | The SlideLink Relay address (`…/p/<pc-id>`) | page → `setRemoteUrls()` |
 | `base` | The address in use | chosen by `findPc()` |
 | `token` | The device login | page → `setToken()` |
 

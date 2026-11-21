@@ -25,9 +25,16 @@ keeps PC and phone in sync live, and lets Claude build presentations directly in
 - Remote with live slide, next slide, speaker notes, timer, blackout, build dots
 - Switch slides and presentations, "Show on PC" / "Close window on PC"
 - Volume keys: **+** next, **−** back
-- Connects by itself: home Wi-Fi when on the same network as the PC, HTTPS everywhere else
+- Connects by itself: encrypted home Wi-Fi when on the same network as the PC, the SlideLink Relay everywhere else
 - Battery friendly: still preview by default, 12 fps when live, dims while presenting, pauses in the background
 - Updates itself from your PC
+
+## Beta 1.3.0: works everywhere, no Tailscale
+- **SlideLink Relay:** phones and the audience reach your PC from any network (mobile data, school, hotel), with nothing to set up and no extra app. The PC keeps one outgoing connection to the relay (a Cloudflare Worker, `relay/worker`), so routers and firewalls don't matter. Closing SlideLink closes it.
+- **Encrypted home Wi-Fi:** the PC creates its own HTTPS certificate (port 8766); the Android app trusts exactly this certificate.
+- **Security:** protection against DNS rebinding, imports only from the SlideLink Chrome extension, logins of different PCs separated on the relay (with a warning before a link switches to another PC), request limits per address.
+- **Automatic updates:** SlideLink installs every new stable version by itself (never betas, never during a presentation).
+- Android app 1.14. Tailscale is no longer used.
 
 ## Beta 1.2.1: languages, appearance, settings
 - **Languages:** English and German. The admin picks the language on the PC (⚙ Settings) and every screen follows it live: PC, phones, co-presenters, audience and the Android app. Guests can choose their own.
@@ -58,15 +65,15 @@ Silent install: `SlideLink-Setup.exe /S [/Launch] [/Startup] [/NoDesktop]`.
    the Play Store: *More details → Install anyway*).
 3. Open the app, enter the PC address shown in SlideLink, then type the 6-digit link code from **Link a new device**.
 
-### Reaching the PC from anywhere (optional)
-At home the phone talks to the PC over Wi-Fi. For access from anywhere, SlideLink uses
-[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) on the PC (free): install Tailscale on the PC, enable Funnel
-in your Tailscale account, then run `tailscale funnel --bg 8765`. The phone does **not** need Tailscale.
+### Reaching the PC from anywhere
+Built in: at home the phone talks to the PC over encrypted Wi-Fi, everywhere else through the SlideLink Relay.
+Nothing to install or set up. To use your own relay, deploy `relay/worker` (`npx wrangler deploy`) and set its
+address in the environment variable `SLIDELINK_RELAY`; `off` switches the relay off.
 
 ## Requirements
 - Windows 10/11, Python 3.10+ (standard library only), Google Chrome or Microsoft Edge
 - Android 8.0+ for the app
-- Optional: PowerPoint (for `.pptx` import), Tailscale (for access from anywhere)
+- Optional: PowerPoint (for `.pptx` import)
 
 ## Documentation
 | | English | Deutsch |
@@ -83,13 +90,14 @@ static/              Web UI: library, editor, presenter, phone remote (plain JS,
 android/             Android app (Java, no Gradle) + build script
 setup/               Windows installer (C#, compiled with the C# compiler built into Windows)
 chrome-extension/    Optional: import decks from claude.ai in Chrome
-install.ps1 / uninstall.ps1, pdf_pages.ps1, save_deck.py, save_doc.py, import_claude_deck.py, make_icon.py
+relay/               SlideLink Relay: Cloudflare Worker (worker/) and a local test version (relay.py)
+install.ps1 / uninstall.ps1, updater.py, wsmini.py, make_cert.ps1, pdf_pages.ps1, save_deck.py, save_doc.py, import_claude_deck.py, make_icon.py
 ```
 
 ## Security
 Only devices you link with a one-time 6-digit code (valid 10 minutes, destroyed after 8 wrong tries) can see or
-control anything. Device tokens are stored only as SHA-256 hashes. Requests through a proxy (e.g. Tailscale Funnel)
-are never treated as the PC itself. See [docs/desktop.md](docs/desktop.md#security).
+control anything. Device tokens are stored only as SHA-256 hashes. Requests through the relay or any proxy are
+never treated as the PC itself, and only the PC's own local names count as the PC (no DNS rebinding). See [docs/desktop.md](docs/desktop.md#security).
 
 ## License
 [MIT](LICENSE)

@@ -87,7 +87,10 @@ def build_steps(slide):
     return clicks + len(FRAGMENT.findall(html))
 
 
-IMPORT_ORIGINS = re.compile(r"^(https://([a-z0-9-]+\.)*(claudeusercontent\.com|claude\.ai|claude\.site)|chrome-extension://[a-p]{32})$")
+# only the SlideLink Chrome extension may import (its service worker sends the deck); web pages never can,
+# otherwise any published claude.ai artifact could slip decks into SlideLink or overwrite imported ones
+IMPORT_ORIGINS = re.compile(r"^chrome-extension://[a-p]{32}$")
+LOCAL_HOSTS = {f"{h}:{PORT}" for h in ("localhost", "127.0.0.1", "[::1]")}   # the PC's own names for this server
 MEDIA_PATH = re.compile(r"^/media/([0-9a-f]{24})/([A-Za-z0-9._-]{1,80})$")
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
@@ -1198,15 +1201,211 @@ class Store:
 store = Store()
 
 
-TAILNET = ipaddress.ip_network("100.64.0.0/10")   # Tailscale address range
-_ts_cache = {"at": 0, "info": None}
+# EN: SlideLink Relay client: the PC asks the relay for requests from phones (always outgoing, no open ports),
+#     answers them through this server and streams the answer back. Ends when SlideLink ends.
+# DE: SlideLink-Relay-Client: Der PC holt Anfragen von Handys beim Relay ab (immer ausgehend, keine offenen Ports),
+#     beantwortet sie über diesen Server und streamt die Antwort zurück. Endet mit SlideLink.
+RELAY_FILE = os.path.join(DATA_DIR, "relay.json")
+RELAY = {"url": "", "id": "", "key": "", "online": False}
+# EN: The relay every SlideLink uses out of the box (Cloudflare Worker from relay/worker). Empty until it is deployed.
+# DE: Das Relay, das jedes SlideLink ab Werk nutzt (Cloudflare Worker aus relay/worker). Leer, bis es veröffentlicht ist.
+DEFAULT_RELAY = "https://slidelink-relay.slidelink-app.workers.dev"
 
 
-# EN: True if an IP address belongs to Tailscale (100.64.0.0/10).
-# DE: True, wenn eine IP-Adresse zu Tailscale gehört (100.64.0.0/10).
-def _is_tailnet(ip):
+def _relay_config():
     try:
-        return ipaddress.ip_address(ip) in TAILNET
+        with open(RELAY_FILE, encoding="utf-8-sig") as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        cfg = {}
+    changed = False
+    if not cfg.get("id"):
+        cfg["id"] = secrets.token_hex(6); changed = True        # address of this PC on the relay
+    if not cfg.get("key"):
+        cfg["key"] = secrets.token_urlsafe(24); changed = True   # proves to the relay that this is the PC
+    url = (os.environ.get("SLIDELINK_RELAY") or cfg.get("url") or DEFAULT_RELAY).rstrip("/")
+    if url == "off":
+        url = ""
+    if changed:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(RELAY_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2)
+    RELAY.update(url=url, id=cfg["id"], key=cfg["key"])
+
+
+def relay_status():
+    """For the UI: is anywhere access on, and the phone address on the relay."""
+    if not RELAY["url"]:
+        return {"on": False, "online": False, "url": ""}
+    return {"on": True, "online": RELAY["online"], "url": _relay_phone_url()}
+
+
+def _relay_phone_url():
+    """The phone address: own domain  https://{id}.domain  (own web origin per PC), else  <relay>/p/<id>."""
+    if "{id}" in RELAY["url"]:
+        return RELAY["url"].replace("{id}", RELAY["id"])
+    return f"{RELAY['url']}/p/{RELAY['id']}"
+
+
+def _relay_base():
+    """Where the PC's permanent line goes (the domain itself, without a PC id)."""
+    return RELAY["url"].replace("{id}.", "")
+
+
+_relay_cancel = set()
+_relay_pieces = {}                # rid -> pieces of a big upload, sent before its request
+
+
+def _relay_handle(ws, job):
+    """Answers one phone request through this server and streams the answer back over the relay line."""
+    import base64
+    import http.client
+    rid = job["rid"]
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", PORT, timeout=600)
+        headers = dict(job.get("headers") or {})
+        headers["X-Forwarded-For"] = job.get("client", "")      # never counts as the PC itself (see _is_local)
+        headers["X-SlideLink-Relay"] = "1"
+        body = b"".join(_relay_pieces.pop(rid, [])) if job.get("pieces") else base64.b64decode(job.get("body") or "")
+        conn.request(job["method"], job["path"], body=body or None, headers=headers)
+        resp = conn.getresponse()
+        ws.send(json.dumps({"t": "head", "rid": rid, "status": resp.status, "headers": [[k, v] for k, v in resp.getheaders()]}))
+        prefix = rid.encode()
+        while rid not in _relay_cancel:
+            chunk = resp.read1(65536) if job["method"] != "HEAD" else b""
+            if not chunk:
+                break
+            ws.send(prefix + chunk)
+        conn.close()
+    except Exception as e:
+        print(f"  relay request failed: {e}")
+    finally:
+        _relay_cancel.discard(rid)
+        try:
+            ws.send(json.dumps({"t": "end", "rid": rid}))
+        except Exception:
+            pass
+
+
+def _relay_pinger(ws):
+    while not ws.closed:
+        time.sleep(20)
+        try:
+            ws.send('{"t":"ping"}')
+        except Exception:
+            ws.close()
+            return
+
+
+def _relay_line():
+    """Keeps the permanent line to the relay; reconnects by itself (2 s, 4 s … up to 60 s)."""
+    import wsmini
+    wait = 2
+    while True:
+        url = RELAY["url"]
+        if not url:
+            RELAY["online"] = False
+            time.sleep(3)
+            continue
+        ws = None
+        try:
+            wsurl = _relay_base().replace("https://", "wss://", 1).replace("http://", "ws://", 1) + f"/_pc/{RELAY['id']}/ws"
+            ws = wsmini.connect(wsurl, {"X-Relay-Key": RELAY["key"]})
+            RELAY["online"], RELAY["_ws"], wait = True, ws, 2
+            threading.Thread(target=_relay_pinger, args=(ws,), daemon=True).start()
+            while RELAY["url"] == url:
+                msg = ws.recv()
+                if isinstance(msg, bytes):
+                    rid = msg[:16].decode("ascii", "replace")
+                    if len(_relay_pieces) < 64 or rid in _relay_pieces:
+                        _relay_pieces.setdefault(rid, []).append(msg[16:])
+                    continue
+                m = json.loads(msg)
+                if m.get("t") == "req":
+                    threading.Thread(target=_relay_handle, args=(ws, m), daemon=True).start()
+                elif m.get("t") == "cancel":
+                    _relay_cancel.add(m.get("rid"))
+        except Exception as e:
+            if RELAY["online"]:
+                print(f"  relay line lost: {e}")
+        RELAY["online"] = False
+        if ws:
+            ws.close()
+        time.sleep(wait)
+        wait = min(wait * 2, 60)
+
+
+# EN: HTTPS for the home Wi-Fi: this PC's own certificate (made once by make_cert.ps1). Browsers would warn about it,
+#     but the SlideLink app trusts exactly this certificate (its fingerprint comes with the PC's addresses).
+# DE: HTTPS fürs Heim-WLAN: das eigene Zertifikat dieses PCs (einmal von make_cert.ps1 erzeugt). Browser würden warnen,
+#     die SlideLink-App vertraut aber genau diesem Zertifikat (sein Fingerabdruck kommt mit den Adressen des PCs).
+HTTPS_PORT = PORT + 1
+TLS_DIR = os.path.join(DATA_DIR, "tls")
+TLS = {"on": False, "sha256": "", "port": HTTPS_PORT}
+
+
+def start_https():
+    import ssl
+    cert, key = os.path.join(TLS_DIR, "cert.pem"), os.path.join(TLS_DIR, "key.pem")
+    try:
+        if not (os.path.exists(cert) and os.path.exists(key)) and os.name == "nt":
+            script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "make_cert.ps1")
+            subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Out", TLS_DIR],
+                           capture_output=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        ctx.load_cert_chain(cert, key)
+        with open(cert, encoding="ascii") as f:
+            TLS["sha256"] = hashlib.sha256(ssl.PEM_cert_to_DER_cert(f.read())).hexdigest()
+        httpd = ThreadingHTTPServer(("0.0.0.0", HTTPS_PORT), Handler)
+        httpd.daemon_threads = True
+        # the handshake runs in each request's own thread, so one slow phone can't hold up the others
+        httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True, do_handshake_on_connect=False)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        TLS["on"] = True
+        print(f"  https (Wi-Fi) on port {HTTPS_PORT}")
+    except Exception as e:
+        print(f"  https not available: {e}")
+
+
+_relay_started = []
+
+
+def start_relay():
+    _relay_config()
+    if not _relay_started:
+        _relay_started.append(True)
+        threading.Thread(target=_relay_line, daemon=True).start()
+        if RELAY["url"]:
+            print(f"  relay: {_relay_phone_url()}")
+
+
+def set_relay(url):
+    """Saves the relay address ("" = the built-in one, "off" = no relay) and switches right away."""
+    try:
+        with open(RELAY_FILE, encoding="utf-8-sig") as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        cfg = {}
+    cfg["url"] = url
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with open(RELAY_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+    _relay_config()
+    old = RELAY.pop("_ws", None)
+    if old:
+        old.close()                              # the line reconnects to the new address
+    start_relay()
+
+
+# EN: True for addresses of the carrier-grade NAT range (100.64.0.0/10), which a phone can't use on Wi-Fi.
+# DE: True für Adressen aus dem Carrier-NAT-Bereich (100.64.0.0/10), die ein Handy im WLAN nicht nutzen kann.
+CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
+def _is_cgnat(ip):
+    try:
+        return ipaddress.ip_address(ip) in CGNAT
     except ValueError:
         return False
 
@@ -1230,63 +1429,27 @@ def local_ips():
     return sorted(ip for ip in ips if not ip.startswith(("127.", "169.254.")))
 
 
-# EN: Home-network addresses of this PC (no Tailscale, no loopback).
-# DE: Heimnetz-Adressen dieses PCs (kein Tailscale, kein Loopback).
+# EN: Home-network addresses of this PC (no loopback, no carrier NAT).
+# DE: Heimnetz-Adressen dieses PCs (kein Loopback, kein Carrier-NAT).
 def lan_ips():
-    return [ip for ip in local_ips() if not _is_tailnet(ip)]
+    return [ip for ip in local_ips() if not _is_cgnat(ip)]
 
 
-# EN: Tailscale status of this PC: installed, running, IP and DNS name.
-# DE: Tailscale-Status dieses PCs: installiert, läuft, IP und DNS-Name.
-def tailscale():
-    """Tailscale status for this PC (cached 20 s). Works without Tailscale installed."""
-    if time.time() - _ts_cache["at"] < 20 and _ts_cache["info"] is not None:
-        return _ts_cache["info"]
-    info = {"installed": False, "running": False, "ip": None, "dns": None}
-    exe = shutil.which("tailscale") or next(
-        (p for p in (r"C:\Program Files\Tailscale\tailscale.exe","/usr/bin/tailscale",
-                     "/Applications/Tailscale.app/Contents/MacOS/Tailscale") if os.path.exists(p)), None)
-    if exe:
-        info["installed"] = True
-        try:
-            out = subprocess.run([exe, "status", "--json"], capture_output=True, timeout=4,
-                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-            st = json.loads(out.stdout or b"{}")
-            me = st.get("Self") or {}
-            info["running"] = st.get("BackendState") == "Running"
-            info["ip"] = next((ip for ip in me.get("TailscaleIPs") or [] if "." in ip), None)
-            info["dns"] = (me.get("DNSName") or "").rstrip(".") or None
-        except (OSError, ValueError, subprocess.SubprocessError):
-            pass
-    if not info["ip"]:  # fall back to spotting a Tailscale address on a network adapter
-        info["ip"] = next((ip for ip in local_ips() if _is_tailnet(ip)), None)
-        info["running"] = info["running"] or bool(info["ip"])
-    _ts_cache.update(at=time.time(), info=info)
-    return info
-
-
-# EN: Addresses a phone can use to reach this PC (Tailscale and home Wi-Fi).
-# DE: Adressen, über die ein Handy diesen PC erreicht (Tailscale und Heim-WLAN).
-# EN: Base address for the audience link: HTTPS (Tailscale Funnel) if available, checked at most once a minute.
-# DE: Basisadresse für den Publikums-Link: HTTPS (Tailscale Funnel), falls vorhanden, höchstens einmal pro Minute geprüft.
+# EN: Base address for the audience link: the relay (reachable from any network) if it is on.
+# DE: Basisadresse für den Publikums-Link: das Relay (aus jedem Netz erreichbar), falls es an ist.
 def audience_base():
-    now = time.time()
-    cache = getattr(audience_base, "_c", None)
-    if not cache or now - cache[0] > 60:
-        ts = tailscale()
-        cache = (now, f"https://{ts['dns']}" if ts.get("running") and ts.get("dns") else "")
-        audience_base._c = cache
-    return cache[1]
+    return relay_status()["url"]
 
 
 def phone_urls():
     """Addresses a phone can use, best first."""
     urls = []
-    ts = tailscale()
-    if ts["running"] and ts["dns"]:
-        urls.append({"url": f"http://{ts['dns']}:{PORT}", "label": "Anywhere – Tailscale (name never changes)", "kind": "tailscale"})
-    if ts["running"] and ts["ip"]:
-        urls.append({"url": f"http://{ts['ip']}:{PORT}", "label": "Anywhere – Tailscale", "kind": "tailscale"})
+    r = relay_status()
+    if r["on"]:
+        urls.append({"url": r["url"], "label": "Anywhere – SlideLink Relay", "kind": "relay"})
+    if TLS["on"]:                                # encrypted first (the app trusts this PC's own certificate)
+        for ip in lan_ips():
+            urls.append({"url": f"https://{ip}:{HTTPS_PORT}", "label": "Same Wi-Fi, encrypted (SlideLink app)", "kind": "lan"})
     for ip in lan_ips():
         urls.append({"url": f"http://{ip}:{PORT}", "label": "Same Wi-Fi only", "kind": "lan"})
     urls.append({"url": f"http://{socket.gethostname().lower()}.local:{PORT}", "label": "Same Wi-Fi only (if the IP changes)", "kind": "lan"})
@@ -1531,6 +1694,8 @@ watcher = Watcher()
 # EN: Starts the folder watcher (called by the desktop app and main()).
 # DE: Startet die Ordnerüberwachung (aufgerufen von der Desktop-App und main()).
 def start_background():
+    start_relay()
+    threading.Thread(target=start_https, daemon=True).start()
     if not watcher.is_alive():
         watcher.start()
 
@@ -1539,7 +1704,7 @@ def start_background():
 # EN: The HTTP request handler: web UI, REST API, live events, uploads.
 # DE: Der HTTP-Request-Handler: Web-Oberfläche, REST-API, Live-Events, Uploads.
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SlideLink/1.1"
+    server_version = "SlideLink/1.3"
 
     # EN: Logs requests from phones (path only, no tokens); the PC itself stays quiet.
     # DE: Protokolliert Anfragen von Handys (nur Pfad, keine Tokens); der PC selbst bleibt still.
@@ -1562,9 +1727,14 @@ class Handler(BaseHTTPRequestHandler):
     def _is_host(self):
         if self.client_address[0] not in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
             return False
-        # A local proxy (tailscale serve/funnel, reverse proxies) forwards other devices from
+        # DNS rebinding: a website can point its own name at 127.0.0.1 and talk to SlideLink from the PC's browser.
+        # Such requests carry the website's name as Host, so only the real local names count as the PC.
+        host = (self.headers.get("Host") or "").lower()
+        if host not in LOCAL_HOSTS:
+            return False
+        # A local proxy (the relay client, reverse proxies) forwards other devices from
         # 127.0.0.1 - those must still be linked.
-        proxied = ("X-Forwarded-For", "Forwarded", "Tailscale-User-Login", "X-Real-IP")
+        proxied = ("X-Forwarded-For", "Forwarded", "X-SlideLink-Relay", "X-Real-IP")
         return not any(self.headers.get(h) for h in proxied)
 
     # EN: The device token from the sl_token cookie.
@@ -1694,7 +1864,7 @@ class Handler(BaseHTTPRequestHandler):
             if p == "/api/watch":
                 return self._json(watcher.status)
             if p == "/api/info":
-                return self._json({"port": PORT, "ips": lan_ips(), "urls": phone_urls(), "tailscale": tailscale(), "layouts": LAYOUTS,
+                return self._json({"port": PORT, "ips": lan_ips(), "urls": phone_urls(), "relay": relay_status(), "tls": TLS, "layouts": LAYOUTS,
                                    "statuses": STATUSES, "themes": THEMES})
             if p == "/events":
                 return self._events(parse_qs(url.query), dev)
@@ -1819,6 +1989,15 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if p == "/api/op":
                 return self._op(body, dev)
+            if p == "/api/relay":
+                # the PC sets (or clears) its relay address: {"url": "https://…"} or {"url": ""}
+                if dev is not HOST:
+                    return self._json({"ok": False, "error": "Set the relay on the PC."}, 403)
+                url = str(body.get("url") or "").strip().rstrip("/")
+                if url and url != "off" and not re.match(r"^https?://[^\s/]+(/[^\s]*)?$", url):
+                    return self._json({"ok": False, "error": "Not a web address."}, 400)
+                set_relay(url)
+                return self._json({"ok": True, "relay": relay_status()})
             if p == "/api/watch/open":
                 if dev is not HOST or os.name != "nt":
                     return self._json({"ok": False, "error": "Open the folder on the PC."}, 403)
@@ -1826,7 +2005,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True})
             if p == "/api/devices/code":
                 code, exp = registry.new_code()
-                return self._json({"ok": True, "code": code, "expires_at": exp, "urls": phone_urls(), "tailscale": tailscale()})
+                return self._json({"ok": True, "code": code, "expires_at": exp, "urls": phone_urls(), "relay": relay_status()})
             if p == "/api/devices/rename":
                 d = registry.rename(body.get("id"), body.get("name"))
                 store.publish()
@@ -1948,8 +2127,8 @@ class Handler(BaseHTTPRequestHandler):
         role = (qs.get("role") or ["viewer"])[0][:16]
         with store.lock:
             ip = self.client_address[0]
-            via = ("pc" if dev is HOST else "tailscale" if _is_tailnet(ip)
-                   else "internet" if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") else "wifi")   # 127.0.0.1 + linked device = through the HTTPS funnel
+            via = ("pc" if dev is HOST else "relay" if self.headers.get("X-SlideLink-Relay")
+                   else "internet" if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") else "wifi")   # 127.0.0.1 + linked device = through a proxy
             store.clients[cid] = {"role": role, "device": dev["id"], "q": q, "via": via}
             appv = (qs.get("appv") or [""])[0][:12]      # the phone app tells its version when it connects
             if appv and dev is not HOST and dev.get("app_version") != appv:
@@ -1995,8 +2174,8 @@ def main():
     print(f"  Presenter     http://localhost:{PORT}/present")
     for u in phone_urls():
         print(f"  Phone         {u['url']:<44} {u['label']}")
-    if not tailscale()["running"]:
-        print("\n  Tip: install Tailscale on this PC and your phone to use SlideLink from anywhere.")
+    if not RELAY["url"]:
+        print("\n  Tip: set a relay (SLIDELINK_RELAY or relay.json) to use SlideLink from anywhere.")
     n = len(registry.items)
     print(f"\n  {n} linked device{'s' if n != 1 else ''}. Link more in the editor: ⚙ Linked devices.")
     print(f"  {len(library.ids())} presentations in {DATA_DIR}\n  Press Ctrl+C to stop.\n")

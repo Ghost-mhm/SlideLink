@@ -1,1 +1,1 @@
-Sharper app icon that fits your launcher's shape.
+Works everywhere without Tailscale: encrypted home Wi-Fi and the SlideLink Relay.

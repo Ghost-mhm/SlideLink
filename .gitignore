@@ -23,3 +23,7 @@ __pycache__/
 .claude/
 *.log
 proof/
+
+# Cloudflare tooling
+.wrangler/
+node_modules/

@@ -19,7 +19,7 @@ const KIND = /iPad|Tablet/i.test(navigator.userAgent) || (/Android/i.test(naviga
 let DEVICE = 'PC';     // how this device is named in "last edited by"; set from the server after linking
 let ME = null;         // {id, name, type} of this device
 const TOKEN_KEY = 'slidelink-token';
-// Android app: the app keeps the login for every address (HTTPS, Tailscale, Wi-Fi)
+// Android app: the app keeps the login for every address (relay, Wi-Fi)
 if (MODE !== 'group' && window.SlideLinkApp && SlideLinkApp.getToken) {
   try {
     const mine = localStorage.getItem('slidelink-token'), kept = SlideLinkApp.getToken();
@@ -28,16 +28,16 @@ if (MODE !== 'group' && window.SlideLinkApp && SlideLinkApp.getToken) {
   } catch (_) {}
 }
 // Android app: tell it the PC's current home-Wi-Fi addresses, so it can switch to Wi-Fi automatically at home
-// EN: Android app only: tells it the PC's current addresses (home Wi-Fi, HTTPS, Tailscale).
-// DE: Nur Android-App: teilt ihr die aktuellen Adressen des PCs mit (Heim-WLAN, HTTPS, Tailscale).
+// EN: Android app only: tells it the PC's current addresses (home Wi-Fi, relay).
+// DE: Nur Android-App: teilt ihr die aktuellen Adressen des PCs mit (Heim-WLAN, Relay).
 function sendLanToApp() {
   if (!(window.SlideLinkApp && SlideLinkApp.setLanUrls)) return;
   fetch('/api/info', { headers: authHeaders() }).then(r => r.ok ? r.json() : null).then(j => {
     if (!j || !j.urls) return;
     SlideLinkApp.setLanUrls(j.urls.filter(u => u.kind === 'lan').map(u => u.url).join(' '));
+    if (SlideLinkApp.setCertPin && j.tls && j.tls.sha256) SlideLinkApp.setCertPin(j.tls.sha256);   // the PC's own HTTPS certificate
     if (SlideLinkApp.setRemoteUrls) {
-      const https = j.tailscale && j.tailscale.dns ? ['https://' + j.tailscale.dns] : [];
-      SlideLinkApp.setRemoteUrls(https.concat(j.urls.filter(u => u.kind === 'tailscale').map(u => u.url)).join(' '));
+      SlideLinkApp.setRemoteUrls(j.urls.filter(u => u.kind === 'relay').map(u => u.url).join(' '));
     }
   }).catch(() => {});
 }
@@ -301,7 +301,7 @@ function showLinkScreen(message) {
 
 /* ---------------- Linked devices panel ---------------- */
 let devModal = null, linkCode = null, linkedNotice = null, tsInfo = null;
-const VIA_LABEL = { tailscale: '🌍 via Tailscale', wifi: '📶 via Wi-Fi', internet: '🔒 via internet (HTTPS)' };
+const VIA_LABEL = { relay: '🌍 via SlideLink Relay', wifi: '📶 via Wi-Fi', internet: '🔒 via internet (HTTPS)' };
 const TYPE_ICON = { host: '🖥', pc: '💻', phone: '📱', tablet: '📟' };
 const ROLE_LABEL = { editor: 'editing', present: 'presenting', remote: 'remote control' };
 
@@ -530,8 +530,7 @@ async function openConnect() {
   const online = (S && S.linked || []).filter(d => d.type !== 'host' && d.online);
   if (online.length) return openDevices();
   const info = await fetch('/api/info', { headers: authHeaders() }).then(r => r.json()).catch(() => null);
-  const ts = info && info.tailscale;
-  const base = ts && ts.dns ? `https://${ts.dns}` : location.origin;   // HTTPS (Funnel): works on any phone
+  const base = info && info.relay && info.relay.on ? info.relay.url : location.origin;   // the relay works on any network
   const url = base + '/SlideLink.apk';
   const back = document.createElement('div');
   back.className = 'modal-back';
@@ -583,28 +582,30 @@ function openDevices() {
   if (ds) ds.onclick = e => { e.stopPropagation(); openSettings(); };
   const up = $('#appUpdate', devModal);
   if (up) up.onclick = () => SlideLinkApp.checkUpdate();
-  loadTailscale();
+  loadRelay();
   renderDevices();
 }
-// EN: Loads the Tailscale status for the devices panel.
-// DE: Lädt den Tailscale-Status für das Geräte-Panel.
-async function loadTailscale() {
+// EN: Loads the relay status for the devices panel.
+// DE: Lädt den Relay-Status für das Geräte-Panel.
+async function loadRelay() {
   const r = await fetch('/api/info', { headers: authHeaders() }).then(r => r.json()).catch(() => null);
-  if (r && r.tailscale) { tsInfo = r.tailscale; renderDevices(); }
+  if (r && r.relay) { tsInfo = r.relay; renderDevices(); }
 }
-setInterval(() => devModal && loadTailscale(), 15000);
+setInterval(() => devModal && loadRelay(), 15000);
 // EN: Info box about reaching the PC from anywhere.
 // DE: Infobox zur Erreichbarkeit des PCs von überall.
 function tsBoxHTML() {
   if (!tsInfo) return '';
-  if (tsInfo.running) {
+  if (tsInfo.on && tsInfo.online) {
     return `<div class="ts on"><b>🌍 Anywhere access is on</b>
-      <span>Tailscale is running on this PC${tsInfo.dns ? ` as <code>${esc(tsInfo.dns.split('.')[0])}</code>` : ''}. Linked phones with Tailscale
-      reach SlideLink on mobile data or any Wi-Fi.</span></div>`;
+      <span>Linked phones reach SlideLink through the SlideLink Relay on mobile data or any Wi-Fi – no extra app needed.</span></div>`;
+  }
+  if (tsInfo.on) {
+    return `<div class="ts off"><b>🌍 Anywhere access: relay not reachable</b>
+      <span>SlideLink can't reach the relay right now (no internet?). Phones on the same Wi-Fi still work. Trying again automatically.</span></div>`;
   }
   return `<div class="ts off"><b>🌍 Anywhere access is off (same Wi-Fi only)</b>
-    <span>${tsInfo.installed ? 'Tailscale is installed but not signed in. Open Tailscale on this PC and log in.'
-      : 'Install <b>Tailscale</b> on this PC and on your phone and sign in with the same account. SlideLink then works from anywhere, with no setup here.'}</span></div>`;
+    <span>No relay is set up. Phones on the same Wi-Fi work as usual.</span></div>`;
 }
 // EN: Closes the devices panel.
 // DE: Schließt das Geräte-Panel.
@@ -673,9 +674,9 @@ function renderDevices() {
         <div class="muted">…then enter this code:</div>
         <div class="big-code">${linkCode.code.slice(0, 3)} ${linkCode.code.slice(3)}</div>
         <div class="muted">Valid for ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')} · works once</div>
-        <p class="hint">${linkCode.tailscale && linkCode.tailscale.running
-          ? 'Use the <b>Tailscale</b> address. Then the phone works from anywhere, as long as Tailscale is on.'
-          : 'Without Tailscale, the phone must be on the same Wi-Fi.'}
+        <p class="hint">${linkCode.relay && linkCode.relay.on
+          ? 'Use the <b>SlideLink Relay</b> address. Then the phone works from any network.'
+          : 'Without a relay, the phone must be on the same Wi-Fi.'}
         <b>Android app:</b> open <b>${esc(linkCode.urls[0].url)}/SlideLink.apk</b> on the phone, install it, then enter this code in the app.</p>
       </div>`;
     } else {
@@ -907,7 +908,7 @@ function renderEditor() {
    ====================================================================== */
 let shownIndex = -1;
 /* Navigation stays in sync even when tapping fast:
-   - taps are sent one after another (never overtaking each other on Wi-Fi/Tailscale)
+   - taps are sent one after another (never overtaking each other on Wi-Fi or the relay)
    - each tap says where it started, so the server ignores taps that no longer fit (no double skips)
    - while taps are on their way, late updates from the server can't jump the display back
    - when the last tap is answered, the display settles on the server's real position */

@@ -25,9 +25,16 @@ hält PC und Handy live synchron und lässt Claude Präsentationen direkt in der
 - Fernbedienung mit aktueller Folie, nächster Folie, Sprechernotizen, Timer, Blackout, Build-Punkten
 - Folien und Präsentationen wechseln, „Show on PC“ / „Close window on PC“
 - Lautstärketasten: **+** weiter, **−** zurück
-- Verbindet sich selbst: im Heim-WLAN direkt, wenn Handy und PC im selben Netz sind, sonst über HTTPS
+- Verbindet sich selbst: im Heim-WLAN direkt und verschlüsselt, wenn Handy und PC im selben Netz sind, sonst über das SlideLink-Relay
 - Akkuschonend: standardmäßig Standbild-Vorschau, 12 fps im Live-Modus, dimmt beim Präsentieren, pausiert im Hintergrund
 - Aktualisiert sich selbst über deinen PC
+
+## Beta 1.3.0: funktioniert überall, ohne Tailscale
+- **SlideLink-Relay:** Handys und Publikum erreichen deinen PC aus jedem Netz (Mobilfunk, Schule, Hotel), ohne Einrichtung und ohne Zusatz-App. Der PC hält eine ausgehende Verbindung zum Relay (ein Cloudflare Worker, `relay/worker`), Router und Firewalls spielen deshalb keine Rolle. Beim Beenden von SlideLink endet sie.
+- **Verschlüsseltes Heim-WLAN:** Der PC erzeugt sein eigenes HTTPS-Zertifikat (Port 8766); die Android-App vertraut genau diesem Zertifikat.
+- **Sicherheit:** Schutz gegen DNS-Rebinding, Importe nur noch über die SlideLink-Chrome-Erweiterung, Logins verschiedener PCs im Relay getrennt (mit Rückfrage, bevor ein Link zu einem anderen PC wechselt), Anfrage-Grenzen pro Adresse.
+- **Automatische Updates:** SlideLink installiert jede neue stabile Version selbst (nie Betas, nie während einer Präsentation).
+- Android-App 1.14. Tailscale wird nicht mehr verwendet.
 
 ## Beta 1.2.1: Sprachen, Anzeige, Einstellungen
 - **Sprachen:** Englisch und Deutsch. Der Admin wählt die Sprache am PC (⚙ Einstellungen), und jeder Bildschirm folgt ihr live: PC, Handys, Mitvortragende, Publikum und die Android-App. Gäste können ihre eigene wählen.
@@ -58,15 +65,15 @@ Stille Installation: `SlideLink-Setup.exe /S [/Launch] [/Startup] [/NoDesktop]`.
    App nicht aus dem Play Store kommt: *Weitere Details → Trotzdem installieren*).
 3. App öffnen, die in SlideLink angezeigte PC-Adresse eingeben und dann den 6-stelligen Code aus **Link a new device** eintippen.
 
-### Den PC von überall erreichen (optional)
-Zu Hause spricht das Handy über WLAN mit dem PC. Für den Zugriff von überall nutzt SlideLink
-[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) auf dem PC (kostenlos): Tailscale auf dem PC installieren,
-Funnel im Tailscale-Konto freischalten und `tailscale funnel --bg 8765` ausführen. Das Handy braucht **kein** Tailscale.
+### Den PC von überall erreichen
+Eingebaut: Zu Hause spricht das Handy verschlüsselt über WLAN mit dem PC, überall sonst über das SlideLink-Relay.
+Nichts zu installieren oder einzurichten. Für ein eigenes Relay `relay/worker` veröffentlichen (`npx wrangler deploy`)
+und seine Adresse in der Umgebungsvariable `SLIDELINK_RELAY` eintragen; `off` schaltet das Relay ab.
 
 ## Voraussetzungen
 - Windows 10/11, Python 3.10+ (nur Standardbibliothek), Google Chrome oder Microsoft Edge
 - Android 8.0+ für die App
-- Optional: PowerPoint (für `.pptx`-Import), Tailscale (für Zugriff von überall)
+- Optional: PowerPoint (für `.pptx`-Import)
 
 ## Dokumentation
 | | Deutsch | English |
@@ -83,13 +90,14 @@ static/              Web-Oberfläche: Bibliothek, Editor, Präsentation, Handy-F
 android/             Android-App (Java, ohne Gradle) + Build-Skript
 setup/               Windows-Installer (C#, kompiliert mit dem in Windows enthaltenen C#-Compiler)
 chrome-extension/    Optional: Decks aus claude.ai in Chrome importieren
-install.ps1 / uninstall.ps1, pdf_pages.ps1, save_deck.py, save_doc.py, import_claude_deck.py, make_icon.py
+relay/               SlideLink-Relay: Cloudflare Worker (worker/) und eine lokale Testversion (relay.py)
+install.ps1 / uninstall.ps1, updater.py, wsmini.py, make_cert.ps1, pdf_pages.ps1, save_deck.py, save_doc.py, import_claude_deck.py, make_icon.py
 ```
 
 ## Sicherheit
 Nur Geräte, die du mit einem einmaligen 6-stelligen Code verknüpfst (10 Minuten gültig, nach 8 Fehlversuchen
 ungültig), können etwas sehen oder steuern. Geräte-Tokens werden nur als SHA-256-Hash gespeichert. Anfragen über
-einen Proxy (z. B. Tailscale Funnel) gelten nie als der PC selbst. Siehe [docs/desktop.de.md](docs/desktop.de.md#sicherheit).
+das Relay oder einen Proxy gelten nie als der PC selbst, und nur die eigenen lokalen Namen des PCs zählen als PC (kein DNS-Rebinding). Siehe [docs/desktop.de.md](docs/desktop.de.md#sicherheit).
 
 ## Lizenz
 [MIT](LICENSE)

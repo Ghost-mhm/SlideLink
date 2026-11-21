@@ -35,7 +35,7 @@ In der APK ist keine Adresse eingebaut; alles wird zur Laufzeit gelernt und in `
 | Schlüssel | Inhalt | Quelle |
 |---|---|---|
 | `lan` | Die Heim-WLAN-Adressen des PCs (`http://192.168.x.y:8765`, `http://<pc>.local:8765`) | Seite → `setLanUrls()` nach dem Verbinden |
-| `remote` | Zuerst HTTPS (Tailscale Funnel), dann Tailscale-Adressen | Seite → `setRemoteUrls()` |
+| `remote` | Die Adresse im SlideLink-Relay (`…/p/<pc-id>`) | Seite → `setRemoteUrls()` |
 | `base` | Die gerade genutzte Adresse | gewählt von `findPc()` |
 | `token` | Die Anmeldung des Geräts | Seite → `setToken()` |
 
