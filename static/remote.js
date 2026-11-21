@@ -27,6 +27,27 @@ let remoteLive = !!localStorage.getItem('sl-remote-live');
 let myName = '';                                              // this phone's name (for "I'm presenting")   // preview: still picture (default, battery) or live
 let lastPresenting = null;   // 'deck' | 'doc'
 
+// EN: SlideLink's own line icons (24x24, drawn with the current text colour).
+// DE: SlideLinks eigene Linien-Icons (24x24, in der aktuellen Textfarbe gezeichnet).
+const IC = (() => {
+  const d = {
+    slides: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',
+    decks: '<rect x="6" y="3" width="15" height="12" rx="2.5"/><path d="M3 8v10a3 3 0 0 0 3 3h12"/>',
+    pc: '<rect x="2.5" y="4" width="19" height="12.5" rx="2.5"/><path d="M8.5 20.5h7M12 16.5v4"/><path d="M10.5 8.5l3.5 1.75-3.5 1.75z" fill="currentColor"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    wait: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    live: '<circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"/>',
+    devices: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+    sync: '<path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6"/><path d="M18 2.5v4.2h-4.2M6 21.5v-4.2h4.2"/>',
+    chev: '<path d="M7 10l5 5 5-5"/>',
+    prev: '<path d="M15 5l-7 7 7 7"/>',
+    next: '<path d="M9 5l7 7-7 7"/>',
+    blackout: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor"/>',
+    mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  };
+  return n => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d[n]}</svg>`;
+})();
+
 // EN: Builds the remote screen and its buttons, swipes and keys.
 // DE: Baut die Fernbedienung mit Knöpfen, Wischgesten und Tasten.
 function initRemote() {
@@ -37,10 +58,10 @@ function initRemote() {
   <div class="rm">
     <header class="rm-top">
       <button class="rm-deck" id="deckBtn" aria-label="Switch presentation">
-        <span class="rm-deck-t" id="rTitle">…</span><span class="rm-chev">▾</span>
+        <span class="rm-deck-t" id="rTitle">…</span><span class="rm-chev">${IC('chev')}</span>
       </button>
       <button class="rm-timer" id="timer" title="Tap: start / pause · hold: reset">00:00</button>
-      <button class="rm-sync" id="syncBtn" aria-label="Resync all screens" title="Resync all screens">⟳</button>
+      <button class="rm-sync" id="syncBtn" aria-label="Resync all screens" title="Resync all screens">${IC('sync')}</button>
     </header>
     <div class="claude-bar" id="claudeBar"></div>
     <div class="rm-now" id="now">
@@ -55,23 +76,23 @@ function initRemote() {
     </div>
     <div class="rm-crew" id="crew">
       <span id="crewNow"></span>
-      <button id="meBtn">🎤 Me now</button>
+      <button id="meBtn">${IC('mic')}<span>Me now</span></button>
     </div>
     <div class="rm-next">
       <div class="rm-nx"><div class="rm-lbl">Next</div><div id="nx"></div></div>
       <div class="rm-notes" id="notes"></div>
     </div>
     <div class="rm-actions">
-      <button id="slidesBtn"><i>▦</i><span>Slides</span></button>
-      <button id="decksBtn"><i>📚</i><span>Decks</span></button>
-      <button id="pcBtn" title="Show the presentation on the PC / close it"><i>🖥</i><span>On PC</span></button>
-      <button id="liveBtnSheet" aria-label="Audience, polls, presenters"><i>👥</i><span>Live</span></button>
-      <button id="devBtn" aria-label="Linked devices"><i>🔗</i><span>Devices</span></button>
+      <button id="slidesBtn"><i>${IC('slides')}</i><span>Slides</span></button>
+      <button id="decksBtn"><i>${IC('decks')}</i><span>Decks</span></button>
+      <button id="pcBtn" title="Show the presentation on the PC / close it"><i>${IC('pc')}</i><span>On PC</span></button>
+      <button id="liveBtnSheet" aria-label="Audience, polls, presenters"><i>${IC('live')}</i><span>Live</span></button>
+      <button id="devBtn" aria-label="Linked devices"><i>${IC('devices')}</i><span>Devices</span></button>
     </div>
     <div class="rm-pad">
-      <button id="prevBtn" aria-label="Back">◀</button>
-      <button id="blkBtn" class="rm-blk"><span>⬛</span><small>Blackout</small></button>
-      <button id="nextBtn" class="next">Next ▶</button>
+      <button id="prevBtn" aria-label="Back">${IC('prev')}</button>
+      <button id="blkBtn" class="rm-blk">${IC('blackout')}<small>Blackout</small></button>
+      <button id="nextBtn" class="next"><span>Next</span>${IC('next')}</button>
     </div>
     <div class="rm-sheet" id="sheet" aria-hidden="true">
       <div class="rm-sheet-in">
@@ -178,8 +199,8 @@ function renderPcBtn() {
     if (b._h !== html) { b.innerHTML = html; b._h = html; }
     b.classList.toggle('closing', closing);
   };
-  if (pcPending) return set('⏳', pcPending.want ? 'Opening' : 'Closing', !pcPending.want);
-  set(open ? '✕' : '🖥', open ? 'Close' : 'On PC', open);
+  if (pcPending) return set(IC('wait'), pcPending.want ? 'Opening' : 'Closing', !pcPending.want);
+  set(open ? IC('close') : IC('pc'), open ? 'Close' : 'On PC', open);
 }
 setInterval(() => pcPending && typeof S !== 'undefined' && renderPcBtn(), 1000);
 // EN: Short green confirmation message.
@@ -344,7 +365,7 @@ function renderRemote() {
   if (live) renderSlots(box, i, 0);   // phone: only the current slide runs, at low fps
   else setHTML(box, s ? `<div class="pslot cur">${slideHTML(s, S.deck, i)}</div>` : slideHTML(null, S.deck));
   const lb = $('#liveBtn');
-  lb.textContent = remoteLive ? '● Live' : '○ Still';   // shows the current state; tap switches
+  lb.textContent = remoteLive ? 'Live' : 'Still';   // shows the current state; tap switches
   lb.classList.toggle('on', remoteLive);
   lb.hidden = !!(s && s.layout === 'doc');
   presentingChanged();
@@ -356,7 +377,7 @@ function renderRemote() {
   const scrolls = s && (s.layout === 'page' || s.layout === 'doc');
   const more = step < steps && !scrolls;
   $('#nextBtn').disabled = !more && i >= list.length - 1 && !scrolls;
-  $('#nextBtn').textContent = more ? 'Reveal ▶' : 'Next ▶';
+  const nl = $('#nextBtn span'); if (nl) nl.textContent = more ? 'Reveal' : 'Next';
   renderClaudeBar();
   if (sheet === 'decks' && remoteDecks && remoteDecks.active !== S.deck.id) loadRemoteDecks();
   renderSheet();

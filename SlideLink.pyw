@@ -531,10 +531,14 @@ def main():
         tray.notify("SlideLink is running", "Closing the window keeps SlideLink in the tray so your phone stays "
                                             "connected. Right-click the tray icon for options.")
         open(first_run_flag, "w").close()
-    # auto-update: every new stable release from GitHub is installed silently (not while presenting)
+    # auto-update: every new stable release from GitHub is installed silently (not while presenting),
+    # and the newest phone app is pulled so phones are offered it
     import updater
     presenting = lambda: bool(_procs.get("present") and _procs["present"].poll() is None)
-    threading.Thread(target=updater.run_forever, args=(ROOT, tray.notify, presenting), daemon=True).start()
+    cur = updater.installed_version()[0] or ""
+    phone_app = lambda: ((server.app_latest() or {}).get("versionCode", 0), server.APP_DIR_PULLED,
+                         not updater.parse(cur)[1] if cur else True)   # beta desktop (or source folder) also takes beta apps
+    threading.Thread(target=updater.run_forever, args=(ROOT, tray.notify, presenting, print, phone_app), daemon=True).start()
     if not background:
         open_window("/", fullscreen=True)     # the app starts maximized (with border)
     tray.loop()

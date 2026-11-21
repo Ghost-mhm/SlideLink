@@ -614,3 +614,88 @@ html[data-theme="light"] .lib-item.sel { background: linear-gradient(90deg, rgba
 .ed-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .ed-fields b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ed-fields textarea { min-height: 64px; resize: vertical; }
+
+/* ===================== 1.3 remote redesign: calm, clean, own icons ===================== */
+body.is-remote { --rx-bg: #08090c; --rx-card: #14161c; --rx-card2: #1b1e26; --rx-line: rgba(255,255,255,.06);
+  --rx-fg: #eef0f6; --rx-mut: #8a90a3; --rx-acc: #8b93ff; --rx-acc2: #6f5cff;
+  font-family: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; letter-spacing: -.005em; }
+html[data-theme="light"] body.is-remote { --rx-bg: #f3f4f8; --rx-card: #ffffff; --rx-card2: #eceef4; --rx-line: rgba(10,14,30,.07);
+  --rx-fg: #141622; --rx-mut: #6b7084; }
+body.is-remote, body.is-remote .rm, html[data-theme="light"] body.is-remote, html[data-theme="light"] body.is-remote .rm { background: var(--rx-bg); color: var(--rx-fg); }
+body.is-remote .ic { width: 22px; height: 22px; display: block; flex: none; }
+body.is-remote .rm { gap: 12px; }
+body.is-remote .rm button { -webkit-tap-highlight-color: transparent; transition: transform .12s ease, background .15s ease, opacity .15s; }
+body.is-remote .rm button:active { transform: scale(.96); }
+body.is-remote .rm button:hover { border-color: transparent; }
+
+/* top bar */
+body.is-remote .rm-top { gap: 8px; }
+body.is-remote .rm-top button, html[data-theme="light"] body.is-remote .rm-top button { background: var(--rx-card); border: 1px solid var(--rx-line); color: var(--rx-fg); height: 46px; border-radius: 16px; }
+body.is-remote .rm-deck { padding: 0 14px; }
+body.is-remote .rm-deck-t { font-size: 15.5px; font-weight: 650; }
+body.is-remote .rm-chev { color: var(--rx-mut); }
+body.is-remote .rm-chev .ic { width: 18px; height: 18px; }
+body.is-remote .rm-timer { font: 600 16px ui-monospace, "Cascadia Mono", Consolas, monospace; font-variant-numeric: tabular-nums; padding: 0 14px; }
+body.is-remote .rm-sync { width: 46px; padding: 0; display: grid; place-items: center; color: var(--rx-mut) !important; }
+
+/* current slide */
+body.is-remote .rm-now { border-radius: 20px; box-shadow: 0 18px 50px -12px rgba(0,0,0,.7), 0 0 0 1px var(--rx-line); }
+html[data-theme="light"] body.is-remote .rm-now { box-shadow: 0 14px 40px -14px rgba(20,24,60,.35), 0 0 0 1px var(--rx-line); }
+body.is-remote .rm-now #nowSlide, body.is-remote .rm-now .slide { border-radius: 20px; }
+body.is-remote .rm-livebtn { right: 10px; bottom: 10px; padding: 5px 11px 5px 22px; font-size: 11.5px; letter-spacing: .02em;
+  background: rgba(8,9,12,.62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 0; color: #e6e8ef; }
+body.is-remote .rm-livebtn::before { content: ""; position: absolute; left: 10px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%; background: #9aa0b2; }
+body.is-remote .rm-livebtn.on { color: #fff; }
+body.is-remote .rm-livebtn.on::before { background: #ff5a5f; box-shadow: 0 0 0 3px rgba(255,90,95,.25); }
+
+/* count + step dots + pc state */
+body.is-remote .rm-count { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+body.is-remote .rm-count small { color: var(--rx-mut); }
+body.is-remote .rm-steps i { width: 6px; height: 6px; background: var(--rx-card2); transition: background .2s, width .2s; border-radius: 99px; }
+body.is-remote .rm-steps i.on { background: var(--rx-acc); width: 14px; }
+body.is-remote .rm-pc { font-size: 12px; color: var(--rx-mut); }
+body.is-remote .rm-pc .live { color: #46d39a; }
+
+/* next + notes */
+body.is-remote .rm-lbl { text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; font-weight: 600; color: var(--rx-mut); margin-bottom: 6px; }
+body.is-remote .rm-nx .slide { border-radius: 10px; }
+body.is-remote .rm-notes, html[data-theme="light"] body.is-remote .rm-notes { background: var(--rx-card); border: 1px solid var(--rx-line); border-radius: 18px; padding: 14px 16px; font-size: 15px; line-height: 1.55; color: var(--rx-fg); }
+body.is-remote .rm-crew { padding: 0 2px; color: var(--rx-mut); }
+body.is-remote .rm-crew button { display: inline-flex; align-items: center; gap: 6px; background: var(--rx-card); border: 1px solid var(--rx-line); border-radius: 99px; padding: 6px 12px; color: var(--rx-fg); }
+body.is-remote .rm-crew .ic { width: 16px; height: 16px; }
+
+/* action row: quiet icon tabs */
+body.is-remote .rm-actions { gap: 4px !important; background: var(--rx-card); border: 1px solid var(--rx-line); border-radius: 20px; padding: 5px; }
+body.is-remote .rm-actions button, html[data-theme="light"] body.is-remote .rm-actions button { background: transparent; border: 0; border-radius: 15px; padding: 8px 2px 7px; gap: 4px; color: var(--rx-mut); font-size: 11px; font-weight: 600; }
+body.is-remote .rm-actions button:active { background: var(--rx-card2); color: var(--rx-fg); }
+body.is-remote .rm-actions button i { display: grid; place-items: center; }
+body.is-remote .rm-actions #pcBtn.closing { color: #ff7b80; }
+
+/* control pad */
+body.is-remote .rm-pad { grid-template-columns: 64px 64px 1fr; gap: 10px; }
+body.is-remote .rm-pad button, html[data-theme="light"] body.is-remote .rm-pad button:not(.next) { height: 72px; padding: 0 !important; border-radius: 24px; border: 1px solid var(--rx-line); background: var(--rx-card); color: var(--rx-fg); display: flex; align-items: center; justify-content: center; }
+body.is-remote .rm-pad .ic { width: 26px; height: 26px; }
+body.is-remote .rm-blk { flex-direction: column; gap: 3px; }
+body.is-remote .rm-blk .ic { width: 22px; height: 22px; }
+body.is-remote .rm-blk small { font-size: 9.5px; letter-spacing: .03em; color: var(--rx-mut); }
+body.is-remote .rm-blk.on { background: #ff5a5f !important; border-color: #ff5a5f !important; color: #fff; }
+body.is-remote .rm-blk.on small { color: #fff; }
+body.is-remote .rm-pad button.next, html[data-theme="light"] body.is-remote .rm-pad button.next { filter: none; gap: 8px; font-size: 18px; font-weight: 700; letter-spacing: .01em; color: #fff; border: 0;
+  background: linear-gradient(135deg, var(--rx-acc) 0%, var(--rx-acc2) 100%); box-shadow: 0 12px 28px -10px rgba(111,92,255,.75); }
+body.is-remote .rm-pad button.next .ic { width: 22px; height: 22px; }
+body.is-remote .rm-pad button:disabled { opacity: .3; box-shadow: none; }
+
+/* bottom sheet */
+body.is-remote .rm-sheet { background: rgba(0,0,0,.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+body.is-remote .rm-sheet-in, html[data-theme="light"] body.is-remote .rm-sheet-in { background: var(--rx-card); border: 0; border-radius: 26px 26px 0 0; padding-top: 22px; }
+body.is-remote .rm-sheet-in::before { content: ""; position: absolute; top: 9px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 99px; background: var(--rx-card2); }
+body.is-remote .rm-sheet-head b { font-size: 17px; font-weight: 700; }
+body.is-remote .rm-sheet-head button { width: 34px; height: 34px; border-radius: 50%; background: var(--rx-card2); font-size: 14px; color: var(--rx-mut); }
+body.is-remote .rm-deckrow, body.is-remote .lv-row button, body.is-remote .lv-names button { background: var(--rx-card2); border: 0; border-radius: 14px; }
+body.is-remote .rm-deckrow.cur { background: rgba(139,147,255,.16); box-shadow: inset 0 0 0 1.5px var(--rx-acc); }
+body.is-remote .rm-cell { border-radius: 14px; }
+body.is-remote .rm-cell.cur { border-color: var(--rx-acc); }
+body.is-remote .lv-row button.on, body.is-remote .lv-names button.on { background: var(--rx-acc); color: #fff; }
+body.is-remote .lv-sec { border-color: var(--rx-line); }
+body.is-remote .lv-sec input { background: var(--rx-bg); border: 1px solid var(--rx-line); border-radius: 12px; }
+body.is-remote .conn { border-radius: 99px; padding: 8px 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.4); }

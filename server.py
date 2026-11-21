@@ -545,15 +545,32 @@ registry = Registry()
 
 # EN: Newest Android app version offered by this PC (static/app-version.json).
 # DE: Neueste Android-App-Version, die dieser PC anbietet (static/app-version.json).
-def app_latest():
-    """Newest Android app version SlideLink offers (static/app-version.json), for the 'update your phone' popup."""
+APP_DIR_PULLED = os.path.join(DATA_DIR, "phone-app")   # newer app pulled from GitHub by updater.py
+
+
+def _app_info(folder):
     try:
-        with open(os.path.join(STATIC, "app-version.json"), encoding="utf-8-sig") as f:
+        with open(os.path.join(folder, "app-version.json"), encoding="utf-8-sig") as f:
             v = json.load(f)
+        if not os.path.isfile(os.path.join(folder, "SlideLink.apk")):
+            return None
         return {"versionName": str(v.get("versionName", "")), "versionCode": int(v.get("versionCode", 0)),
                 "notes": str(v.get("notes", ""))[:300]}
-    except (OSError, ValueError):
+    except (OSError, ValueError, AttributeError):
         return None
+
+
+def app_folder():
+    """Folder with the newest Android app: the one bundled with SlideLink or a newer one pulled from GitHub."""
+    mine, pulled = _app_info(STATIC), _app_info(APP_DIR_PULLED)
+    if pulled and (not mine or pulled["versionCode"] > mine["versionCode"]):
+        return APP_DIR_PULLED
+    return STATIC
+
+
+def app_latest():
+    """Newest Android app version SlideLink offers, for the 'update your phone' popup."""
+    return _app_info(app_folder())
 
 
 # ---------------------------------------------------------------- library
@@ -1704,7 +1721,7 @@ def start_background():
 # EN: The HTTP request handler: web UI, REST API, live events, uploads.
 # DE: Der HTTP-Request-Handler: Web-Oberfläche, REST-API, Live-Events, Uploads.
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SlideLink/1.3"
+    server_version = "SlideLink/1.3.2"
 
     # EN: Logs requests from phones (path only, no tokens); the PC itself stays quiet.
     # DE: Protokolliert Anfragen von Handys (nur Pfad, keine Tokens); der PC selbst bleibt still.
@@ -1872,6 +1889,8 @@ class Handler(BaseHTTPRequestHandler):
         m = MEDIA_PATH.match(p)
         if m:
             return self._file(os.path.join(MEDIA_DIR, m.group(1), m.group(2)))
+        if p in ("/SlideLink.apk", "/app-version.json"):
+            return self._file(os.path.join(app_folder(), p.lstrip("/")))
         full = os.path.normpath(os.path.join(STATIC, p.lstrip("/")))
         if full.startswith(STATIC + os.sep) and os.path.isfile(full):
             return self._file(full)

@@ -1,1 +1,1 @@
-Works everywhere without Tailscale: encrypted home Wi-Fi and the SlideLink Relay.
+New design: calmer look, own icons, cleaner start screen.

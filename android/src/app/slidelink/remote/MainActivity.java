@@ -61,11 +61,11 @@ import java.util.List;
 // EN: The only screen of the app: WebView with the remote plus a native offline screen.
 // DE: Der einzige Bildschirm der App: WebView mit der Fernbedienung plus nativer Offline-Bildschirm.
 public class MainActivity extends Activity {
-    private static final int BG = Color.BLACK;          // true black: OLED pixels off (battery)
+    private static final int BG = Color.rgb(0x08, 0x09, 0x0c);   // near black: OLED pixels almost off (battery)
     private static final long DIM_AFTER_MS = 20_000;     // no touch for 20 s while presenting: dim the screen
     private boolean presenting, dimmed;
     private final Runnable dim = () -> setBrightness(0.04f, true);
-    private static final int ACCENT = Color.rgb(0x7c, 0x83, 0xff);
+    private static final int ACCENT = Color.rgb(0x8b, 0x93, 0xff), ACCENT2 = Color.rgb(0x6f, 0x5c, 0xff);
 
     private final Handler ui = new Handler(Looper.getMainLooper());
     private SharedPreferences prefs;
@@ -436,22 +436,29 @@ public class MainActivity extends Activity {
         offline.setPadding(pad, pad, pad, pad);
         offline.setBackgroundColor(BG);
 
+        android.widget.ImageView logo = new android.widget.ImageView(this);
+        logo.setImageResource(getApplicationInfo().icon);
+        offline.addView(logo, new LinearLayout.LayoutParams(dp(88), dp(88)));
+
         TextView title = new TextView(this);
         title.setText("SlideLink");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(28);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextColor(Color.rgb(0xee, 0xf0, 0xf6));
+        title.setTextSize(26);
+        title.setLetterSpacing(-0.01f);
+        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        title.setPadding(0, dp(14), 0, 0);
         title.setGravity(Gravity.CENTER);
         offline.addView(title);
 
         spinner = new ProgressBar(this);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(dp(40), dp(40));
-        sp.topMargin = dp(24);
+        sp.topMargin = dp(28);
         offline.addView(spinner, sp);
 
         offlineText = new TextView(this);
-        offlineText.setTextColor(Color.rgb(0xb4, 0xb7, 0xc9));
-        offlineText.setTextSize(16);
+        offlineText.setTextColor(Color.rgb(0x8a, 0x90, 0xa3));
+        offlineText.setTextSize(15);
+        offlineText.setLineSpacing(0, 1.25f);
         offlineText.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(-1, -2);
         tp.topMargin = dp(20);
@@ -459,14 +466,14 @@ public class MainActivity extends Activity {
 
         Button retry = button(L.t("Try again", "Erneut versuchen"), true);
         retry.setOnClickListener(v -> findPc());
-        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(52));
-        rp.topMargin = dp(28);
+        LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, dp(58));
+        rp.topMargin = dp(36);
         offline.addView(retry, rp);
 
         Button change = button(L.t("Change PC address", "PC-Adresse \u00e4ndern"), false);
         change.setOnClickListener(v -> askAddress());
-        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(48));
-        cp.topMargin = dp(12);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(54));
+        cp.topMargin = dp(10);
         offline.addView(change, cp);
         return offline;
     }
@@ -478,10 +485,14 @@ public class MainActivity extends Activity {
         b.setText(text);
         b.setAllCaps(false);
         b.setTextSize(16);
-        b.setTextColor(primary ? Color.rgb(0x14, 0x15, 0x1c) : Color.WHITE);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(14));
-        bg.setColor(primary ? ACCENT : Color.rgb(0x25, 0x27, 0x33));
+        b.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        b.setTextColor(primary ? Color.WHITE : Color.rgb(0xee, 0xf0, 0xf6));
+        b.setStateListAnimator(null);
+        GradientDrawable bg = primary
+            ? new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{ACCENT, ACCENT2})
+            : new GradientDrawable();
+        bg.setCornerRadius(dp(20));
+        if (!primary) { bg.setColor(Color.rgb(0x14, 0x16, 0x1c)); bg.setStroke(dp(1), Color.argb(16, 255, 255, 255)); }
         b.setBackground(bg);
         return b;
     }

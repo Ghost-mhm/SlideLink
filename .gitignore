@@ -27,3 +27,7 @@ proof/
 # Cloudflare tooling
 .wrangler/
 node_modules/
+
+# local helper scripts and screenshots
+copy-static.ps1
+emu-shot.png

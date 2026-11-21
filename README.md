@@ -29,6 +29,11 @@ keeps PC and phone in sync live, and lets Claude build presentations directly in
 - Battery friendly: still preview by default, 12 fps when live, dims while presenting, pauses in the background
 - Updates itself from your PC
 
+## New in 1.3.2: new phone design, signed updates
+- **New phone design:** calmer, cleaner remote with SlideLink's own icons (app 1.15).
+- **Phone app updates itself through the PC:** SlideLink pulls the newest Android app from GitHub and offers it to every connected phone.
+- **Signed updates:** desktop and phone-app updates are only installed if they carry SlideLink's release signature (RSA-3072), so access to the GitHub account alone can't push software onto your PC.
+
 ## Beta 1.3.0: works everywhere, no Tailscale
 - **SlideLink Relay:** phones and the audience reach your PC from any network (mobile data, school, hotel), with nothing to set up and no extra app. The PC keeps one outgoing connection to the relay (a Cloudflare Worker, `relay/worker`), so routers and firewalls don't matter. Closing SlideLink closes it.
 - **Encrypted home Wi-Fi:** the PC creates its own HTTPS certificate (port 8766); the Android app trusts exactly this certificate.
