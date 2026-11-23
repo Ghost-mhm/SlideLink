@@ -100,7 +100,13 @@ und seine Adresse in der Umgebungsvariable `SLIDELINK_RELAY` eintragen; `off` sc
 
 ## Projektstruktur
 ```
-server.py            HTTP-Server: Bibliothek, Live-Sync (SSE), Geräte, Importe, Ordnerüberwachung
+server.py            HTTP-Server: Oberfläche, API, Live-Sync (SSE)
+core.py              gemeinsame Pfade, Konstanten und Hilfsfunktionen
+importers.py         Importe: Claude-Decks, HTML, Zip, JSON, Bilder, PowerPoint, PDF
+devices.py           verknüpfte Geräte und die Handy-App-Dateien
+network.py           Relay-Client, HTTPS fürs WLAN, lokale Adressen
+decks.py             Bibliothek, Live-Präsentationsstand, Ende-zu-Ende-Kopplung
+watch.py             überwachter Ordner „Claude Presentations“
 SlideLink.pyw        Windows-Desktop-App: Tray-Symbol, App-/Präsentationsfenster, nur eine Instanz
 mcp_server.py        MCP-Server: Claude kann Präsentationen auflisten, erstellen und steuern
 static/              Web-Oberfläche: Bibliothek, Editor, Präsentation, Handy-Fernbedienung (reines JS, kein Build)

@@ -503,7 +503,7 @@ def main():
     print(f"server on {URL}, data in {server.DATA_DIR}")
 
     tray = Tray(on_quit=httpd.shutdown)
-    server.ON_NOTIFY = tray.notify       # "… added / updated" when the folder syncs
+    server.watch.ON_NOTIFY = tray.notify       # "… added / updated" when the folder syncs
     first_run_flag = os.path.join(APP_DIR, ".tray-hint-shown")
     if not os.path.exists(first_run_flag):
         tray.notify("SlideLink is running", "Closing the window keeps SlideLink in the tray so your phone stays "

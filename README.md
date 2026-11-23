@@ -100,7 +100,13 @@ address in the environment variable `SLIDELINK_RELAY`; `off` switches the relay 
 
 ## Project layout
 ```
-server.py            HTTP server: library, live sync (SSE), devices, imports, folder watcher
+server.py            HTTP server: web UI, API, live sync (SSE)
+core.py              shared paths, constants and helpers
+importers.py         imports: Claude decks, HTML, zip, JSON, images, PowerPoint, PDF
+devices.py           linked devices and the phone app files
+network.py           relay client, HTTPS for Wi-Fi, local addresses
+decks.py             library, live presentation state, end-to-end pairing
+watch.py             watched folder "Claude Presentations"
 SlideLink.pyw        Windows desktop app: tray icon, app/presenter windows, single instance
 mcp_server.py        MCP server: lets Claude list, build and control presentations
 static/              Web UI: library, editor, presenter, phone remote (plain JS, no build step)

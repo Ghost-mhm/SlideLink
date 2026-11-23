@@ -19,7 +19,7 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" -ErrorAction Silently
   ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
-$files = 'server.py','mcp_server.py','SlideLink.pyw','import_claude_deck.py','make_icon.ps1','pdf_pages.ps1','save_doc.py','save_deck.py','updater.py','wsmini.py','e2e.py','e2e_server.py','e2e_session.py','make_cert.ps1','README.md','uninstall.ps1'
+$files = 'server.py','core.py','importers.py','devices.py','network.py','decks.py','watch.py','mcp_server.py','SlideLink.pyw','import_claude_deck.py','make_icon.ps1','pdf_pages.ps1','save_doc.py','save_deck.py','updater.py','wsmini.py','e2e.py','e2e_server.py','e2e_session.py','make_cert.ps1','README.md','uninstall.ps1'
 foreach ($f in $files) { if (Test-Path (Join-Path $src $f)) { Copy-Item (Join-Path $src $f) $dest -Force } }
 Copy-Item (Join-Path $src 'static') $dest -Recurse -Force
 Copy-Item (Join-Path $src 'chrome-extension') $dest -Recurse -Force
