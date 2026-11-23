@@ -88,8 +88,8 @@ git push -q origin beta $tag
 git archive --format=zip -o "$out\SlideLink-$Version-source.zip" $tag
 
 Step 'GitHub release'
-$flags = if ($Beta) { @('--prerelease') } else { @('--latest') }
-gh release create $tag --repo $repo --title "SlideLink $label" --notes-file $Notes @flags (Get-ChildItem $out -File | ForEach-Object FullName)
+$flag = if ($Beta) { '--prerelease' } else { '--latest' }
+gh release create $tag --repo $repo --title "SlideLink $label" --notes-file $Notes $flag (Get-ChildItem $out -File | ForEach-Object FullName)
 if ($LASTEXITCODE) { throw 'gh release failed' }
 
 Step 'Live check'
