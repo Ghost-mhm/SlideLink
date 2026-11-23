@@ -1662,7 +1662,7 @@ def start_background():
 # ---------------------------------------------------------------- HTTP
 # The HTTP request handler: web UI, REST API, live events, uploads.
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SlideLink/1.4.1"
+    server_version = "SlideLink/1.4.2"
 
     # Logs requests from phones (path only, no tokens); the PC itself stays quiet.
     def log_message(self, fmt, *args):
