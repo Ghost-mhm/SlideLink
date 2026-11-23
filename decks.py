@@ -4,6 +4,7 @@ import json
 import os
 import re
 import secrets
+import socket
 import threading
 import time
 import uuid
@@ -147,6 +148,9 @@ library = Library()
 
 # ---------------------------------------------------------------- deck state
 # The live state shared by all screens: open deck, presentation position, activity, Claude status, connected clients.
+PC_NAME = socket.gethostname()[:40] or "PC"   # shown in the phone app's list of PCs
+
+
 class Store:
     # Opens the last active deck.
     def __init__(self):
@@ -157,6 +161,9 @@ class Store:
         self.activity = []
         self.claude = {"text": "", "slide_id": None, "at": 0}
         self.poll = None        # live poll: {id, question, options, votes {voter: option}, open, show}
+        self.questions = []     # audience questions: {id, text, name, at, show}; on screen only when the presenter says so
+        self.questions_open = True
+        self._asked = {}        # voter -> time of their last question (one question every 20 s)
         self.speaker = None     # who presents right now (several presenters): {"name", "at"}
         self.join_qr = False    # show the big audience QR code on the presentation screen
         self.group = None       # group session: {key, expires, members {id: {name, token_hash, joined}}}
@@ -225,6 +232,30 @@ class Store:
         return {"id": self.poll["id"], "question": self.poll["question"], "options": self.poll["options"],
                 "counts": counts, "total": sum(counts), "open": self.poll["open"], "show": self.poll["show"]}
 
+    # A question from the audience. It only goes to the presenter's list; the screen shows it after "Show".
+    def ask(self, voter, text, name):
+        text = " ".join(str(text or "").split())[:280]
+        name = " ".join(str(name or "").split())[:30]
+        if not text:
+            raise ValueError("Write a question first.")
+        with self.lock:
+            if not self.questions_open:
+                raise ValueError("Questions are closed right now.")
+            now = time.time()
+            if now - self._asked.get(voter, 0) < 20:
+                raise ValueError("One question every 20 seconds, please.")
+            if sum(1 for q in self.questions if now - q["at"] < 60) >= 30:
+                raise ValueError("Many questions at once - try again in a minute.")
+            self._asked[voter] = now
+            self.questions.append({"id": new_id(), "text": text, "name": name, "at": now, "show": False})
+            del self.questions[:-50]           # keep the newest 50
+        self.publish()
+
+    # The question that is on the screen right now (or None).
+    def question_shown(self):
+        q = next((q for q in self.questions if q["show"]), None)
+        return {"text": q["text"], "name": q["name"]} if q else None
+
     # The reduced state for the audience: slides without speaker notes, position, poll, speaker.
     def public_snapshot(self):
         d = self.deck
@@ -232,6 +263,7 @@ class Store:
         return {"deck": {"id": d["id"], "title": d["title"], "theme": d.get("theme"), "css": d.get("css", ""),
                          "faces": d.get("faces", []), "slides": slides},
                 "present": self.present, "poll": self.poll_public(), "speaker": self.speaker,
+                "question": self.question_shown(), "questions_open": self.questions_open,
                 "lang": library.meta.get("lang", "en"), "build": app_build(), "server_time": time.time()}
 
     # The state for group members: like the full state, but without linked devices and group admin data.
@@ -254,6 +286,8 @@ class Store:
                 "app_latest": app_latest(),
                 "e2e_pair": pairing.view() if pairing else [],
                 "poll": self.poll_public(), "speaker": self.speaker, "group": self.group_admin_view(),
+                "questions": self.questions, "questions_open": self.questions_open,
+                "pc_name": PC_NAME,
                 "lang": library.meta.get("lang", "en"),
                 "audience": {"key": self.audience_key(), "url": audience_base(), "qr": self.join_qr,
                              "count": sum(1 for c in self.clients.values() if c["role"] == "audience")},
@@ -464,6 +498,24 @@ class Store:
                         self.poll["show"] = bool(op.get("on", True))
                     else:
                         self.poll["open"] = False
+                return {}, False
+            if kind in ("question_show", "question_dismiss"):
+                q = next((q for q in self.questions if q["id"] == op.get("id")), None)
+                if not q:
+                    raise ValueError("This question is gone.")
+                if kind == "question_dismiss":
+                    self.questions.remove(q)
+                else:
+                    on = bool(op.get("on", True))
+                    for other in self.questions:
+                        other["show"] = False            # one question on the screen at a time
+                    q["show"] = on
+                return {}, False
+            if kind == "questions_clear":
+                self.questions = []
+                return {}, False
+            if kind == "questions_open":
+                self.questions_open = bool(op.get("on", True))
                 return {}, False
             if kind == "speaker_set":
                 name = str(op.get("name") or "").strip()[:40]

@@ -424,6 +424,8 @@ function renderLiveOverlay() {
       <p class="lo-small">${S.group.members.length} joined</p></div></div>`;
   if (p && p.show) html += `<div class="lo-card lo-poll"><h2>📊 ${esc(p.question)}</h2>${pollBarsHTML(p)}
       <p class="lo-small">${p.total} vote${p.total === 1 ? '' : 's'}${p.open ? ' · voting is open' : ' · closed'}</p></div>`;
+  const q = (S.questions || []).find(x => x.show);          // only after the presenter tapped "Show on screen"
+  if (q) html += `<div class="lo-card lo-question"><h2>💬 ${esc(q.text)}</h2>${q.name ? `<p class="lo-small">${esc(q.name)}</p>` : ''}</div>`;
   if (S.speaker) html += `<div class="lo-speaker">🎤 ${esc(S.speaker.name)}</div>`;
   if (ov._h !== html) { ov.innerHTML = html; ov._h = html; }
 }
@@ -482,8 +484,17 @@ function openSettings() {
         <select id="setLang" data-noi18n>${Object.entries(I18N_LANGS).map(([k, v]) => `<option value="${k}" ${S && S.lang === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
       </div>
     </section>`}
+    ${window.SlideLinkApp && SlideLinkApp.choosePc && MODE !== 'group' ? `<section class="set-sec">
+      <h4>Computers</h4>
+      <div class="set-row">
+        <div><b>🖥 Your PCs</b><p class="muted">Switch to another PC (e.g. school and home) or add one.</p></div>
+        <button id="setPcs">Switch PC</button>
+      </div>
+    </section>` : ''}
   </div>`;
   document.body.appendChild(back);
+  const pcs = back.querySelector('#setPcs');
+  if (pcs) pcs.onclick = () => { back.remove(); SlideLinkApp.choosePc(); };
   const sl = back.querySelector('#setLang');
   if (sl) sl.onchange = e => api({ op: 'set_lang', lang: e.target.value });
   back.querySelector('#setTheme').onclick = e => {

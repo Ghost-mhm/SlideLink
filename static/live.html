@@ -40,6 +40,16 @@
     .lv-opt .n { float: right; opacity: .8; }
     .lv-note { font-size: 12.5px; opacity: .6; margin-top: 4px; }
     .lv-msg { text-align: center; padding: 60px 20px; opacity: .8; }
+    .lv-ask { margin-top: 10px; background: #15161d; border: 1px solid #2a2c3a; border-radius: 14px; padding: 14px; }
+    .lv-ask[hidden] { display: none; }
+    .lv-ask h3 { margin: 0 0 10px; font-size: 16px; }
+    .lv-ask textarea, .lv-ask input { width: 100%; box-sizing: border-box; padding: 11px 12px; border-radius: 10px; border: 1px solid #34364a;
+      background: #1d1f2a; color: inherit; font: inherit; font-size: 16px; resize: vertical; }
+    .lv-ask-row { display: flex; gap: 8px; margin: 8px 0 6px; }
+    .lv-ask-row button { flex: none; padding: 0 18px; border-radius: 10px; border: 0; background: #7c83ff; color: #0e1020; font-weight: 700; font-size: 15px; }
+    .lv-ask-row button:disabled { opacity: .5; }
+    html[data-theme="light"] .lv-ask { background: #fff; border-color: #d8dbe6; }
+    html[data-theme="light"] .lv-ask textarea, html[data-theme="light"] .lv-ask input { background: #f4f5f9; border-color: #d8dbe6; }
     html[data-theme="light"], html[data-theme="light"] body { background: #f4f5f9; color: #1b1d27; }
     html[data-theme="light"] .lv-stage { background: #e4e6ee; }
     html[data-theme="light"] .lv-poll { background: #fff; border-color: #d8dbe6; }

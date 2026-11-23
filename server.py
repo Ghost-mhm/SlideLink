@@ -332,6 +332,17 @@ class Handler(BaseHTTPRequestHandler):
                     poll["votes"][voter] = choice
                 store.publish()
                 return self._json({"ok": True})
+            if p == "/api/ask":
+                # audience question: the audience key is the ticket; it goes to the presenter, not to the screen
+                body = self._body()
+                if not secrets.compare_digest(str(body.get("k", "")), store.audience_key()):
+                    return self._json({"ok": False, "error": "This audience link is no longer valid."}, 403)
+                voter = str(body.get("voter", ""))[:40] or self.client_address[0]
+                try:
+                    store.ask(voter, body.get("text"), body.get("name"))
+                except ValueError as e:
+                    return self._json({"ok": False, "error": str(e)}, 400)
+                return self._json({"ok": True})
             if p == "/api/clientlog":
                 # script errors from a phone/tablet, so a black screen there leaves a trace on the PC
                 msg = str(self._body().get("msg", ""))[:500].replace("\n", " ")

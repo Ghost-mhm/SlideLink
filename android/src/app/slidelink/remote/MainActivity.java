@@ -74,6 +74,8 @@ public class MainActivity extends Activity {
     static MainActivity current;    // for the updater: downloads from the PC's Wi-Fi HTTPS use the same certificate pin
     private String base;            // the PC address in use, e.g. http://192.168.1.20:8765 or the relay address
     private boolean searching;
+    private volatile boolean presenting;      // a presentation runs: screen on, lock-screen controls shown
+    private volatile String slideInfo = "";   // "3 / 12 · Title" for the lock-screen controls
     private final Runnable autoRetry = this::findPc;
     private final Runnable recheck = this::findPc;
     private ConnectivityManager.NetworkCallback netCallback;
@@ -142,6 +144,19 @@ public class MainActivity extends Activity {
             prefs.edit().putString("lang", lang).apply();
         }
         @JavascriptInterface public void setPresenting(boolean on) { ui.post(() -> applyPresenting(on)); }
+        /** The PC's name (for the list of PCs), and the list itself to switch or add one. */
+        @JavascriptInterface public void setPcName(String name) {
+            if (name == null || name.isEmpty() || groupMode || name.equals(prefs.getString("pc_name", ""))) return;
+            prefs.edit().putString("pc_name", name.length() > 40 ? name.substring(0, 40) : name).apply();
+        }
+        @JavascriptInterface public void choosePc() { ui.post(MainActivity.this::choosePc); }
+        /** Where the presentation is ("3 / 12 · Title"): shown in the lock-screen controls. */
+        @JavascriptInterface public void setSlideInfo(String text) {
+            String t = text == null ? "" : text.length() > 80 ? text.substring(0, 80) : text;
+            if (t.equals(slideInfo)) return;
+            slideInfo = t;
+            if (presenting) ui.post(() -> ControlNote.show(MainActivity.this, slideInfo));
+        }
         /** Short vibration: a JSON list of milliseconds (buzz, pause, buzz, …), e.g. [25] or [40,60,40]. */
         @JavascriptInterface public void vibrate(String pattern) {
             try {
@@ -281,6 +296,11 @@ public class MainActivity extends Activity {
             @Override public void onCapabilitiesChanged(Network n, NetworkCapabilities c) { ui.post(() -> scheduleRecheck(2500)); }
         };
         try { getSystemService(ConnectivityManager.class).registerDefaultNetworkCallback(netCallback); } catch (Exception ignored) { }
+        // the Back / Black / Next buttons of the lock-screen controls (only this app can send them)
+        android.content.IntentFilter f = new android.content.IntentFilter();
+        f.addAction(ControlNote.NEXT); f.addAction(ControlNote.PREV); f.addAction(ControlNote.BLACK);
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(noteButtons, f, RECEIVER_NOT_EXPORTED);
+        else registerReceiver(noteButtons, f);
     }
 
     // ---------- finding the PC ----------
@@ -619,6 +639,12 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, dp(54));
         cp.topMargin = dp(10);
         offline.addView(change, cp);
+
+        Button other = button(L.t("Other PC", "Anderer PC"), false);   // e.g. the school PC is off: switch to the one at home
+        other.setOnClickListener(v -> choosePc());
+        LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(-1, dp(54));
+        op.topMargin = dp(10);
+        offline.addView(other, op);
         return offline;
     }
 
@@ -661,13 +687,151 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    // ---------- several PCs (e.g. school and home) ----------
+    // Everything that belongs to one PC. The active PC's values live in prefs as before; the others are kept in "pcs".
+    private static final String[] PC_KEYS = {"base", "token", "lan", "pin", "remote", "e2e_dev", "e2e_pc", "e2e_offered", "pc_name"};
+
+    // The saved PCs: [{id, name, data{…}}], with the active one brought up to date first.
+    private org.json.JSONArray savedPcs() {
+        org.json.JSONArray list;
+        try { list = new org.json.JSONArray(prefs.getString("pcs", "[]")); } catch (Exception e) { list = new org.json.JSONArray(); }
+        String cur = prefs.getString("pc_cur", "");
+        if (cur.isEmpty()) { cur = "pc" + System.currentTimeMillis(); prefs.edit().putString("pc_cur", cur).apply(); }
+        try {
+            org.json.JSONObject data = new org.json.JSONObject();
+            for (String k : PC_KEYS) {
+                if (!prefs.contains(k)) continue;
+                data.put(k, k.equals("e2e_offered") ? prefs.getBoolean(k, false) : prefs.getString(k, ""));
+            }
+            boolean known = data.has("base") || data.has("token") || data.has("remote");
+            org.json.JSONArray out = new org.json.JSONArray();
+            boolean found = false;
+            for (int i = 0; i < list.length(); i++) {
+                org.json.JSONObject p = list.getJSONObject(i);
+                if (p.optString("id").equals(cur)) {
+                    found = true;
+                    if (!known) continue;                            // nothing linked yet: not a saved PC
+                    p.put("data", data);
+                    p.put("name", prefs.getString("pc_name", p.optString("name")));
+                }
+                out.put(p);
+            }
+            if (!found && known) out.put(new org.json.JSONObject().put("id", cur).put("name", prefs.getString("pc_name", "PC")).put("data", data));
+            prefs.edit().putString("pcs", out.toString()).apply();
+            return out;
+        } catch (Exception e) {
+            return list;
+        }
+    }
+
+    // Makes another saved PC the active one (or a new, empty one with id = null) and connects to it.
+    private void switchPc(String id) {
+        savedPcs();                                                  // keep the current PC's state
+        SharedPreferences.Editor ed = prefs.edit();
+        for (String k : PC_KEYS) ed.remove(k);
+        String next = id == null ? "pc" + System.currentTimeMillis() : id;
+        try {
+            org.json.JSONArray list = new org.json.JSONArray(prefs.getString("pcs", "[]"));
+            for (int i = 0; id != null && i < list.length(); i++) {
+                org.json.JSONObject p = list.getJSONObject(i);
+                if (!p.optString("id").equals(id)) continue;
+                org.json.JSONObject d = p.optJSONObject("data");
+                for (java.util.Iterator<String> it = d == null ? null : d.keys(); it != null && it.hasNext(); ) {
+                    String k = it.next();
+                    if (k.equals("e2e_offered")) ed.putBoolean(k, d.optBoolean(k)); else ed.putString(k, d.optString(k));
+                }
+            }
+        } catch (Exception ignored) { }
+        ed.putString("pc_cur", next).apply();
+        applyPresenting(false);
+        e2eWeb = null;
+        base = null;
+        CookieManager.getInstance().removeAllCookies(null);         // the old PC's login never goes to the new one
+        web.stopLoading();
+        web.loadUrl("about:blank");
+        web.setVisibility(View.INVISIBLE);
+        offline.setVisibility(View.VISIBLE);
+        findPc();                                                    // new PC: asks for its address
+    }
+
+    // The PC list: tap one to switch, or add a new PC. Removing asks first.
+    private void choosePc() {
+        final org.json.JSONArray list = savedPcs();
+        final String cur = prefs.getString("pc_cur", "");
+        final List<String> ids = new ArrayList<>(), names = new ArrayList<>();
+        for (int i = 0; i < list.length(); i++) {
+            org.json.JSONObject p = list.optJSONObject(i);
+            if (p == null) continue;
+            ids.add(p.optString("id"));
+            names.add((p.optString("id").equals(cur) ? "✓  " : "      ") + p.optString("name", "PC"));
+        }
+        names.add("+  " + L.t("Add another PC", "Weiteren PC hinzufügen"));
+        new AlertDialog.Builder(this)
+                .setTitle(L.t("Your PCs", "Deine PCs"))
+                .setItems(names.toArray(new String[0]), (d, w) -> {
+                    if (w == ids.size()) { switchPc(null); return; }
+                    String id = ids.get(w), name = names.get(w).trim().replaceFirst("^✓\\s*", "");
+                    if (id.equals(cur)) return;
+                    new AlertDialog.Builder(this).setTitle(name)
+                            .setPositiveButton(L.t("Switch to this PC", "Zu diesem PC wechseln"), (d2, w2) -> switchPc(id))
+                            .setNeutralButton(L.t("Remove", "Entfernen"), (d2, w2) -> forgetPc(id, name))
+                            .setNegativeButton(L.t("Cancel", "Abbrechen"), null).show();
+                })
+                .show();
+    }
+
+    // Removes a saved PC from this phone (after asking). The PC itself still lists the phone until it is unlinked there.
+    private void forgetPc(String id, String name) {
+        new AlertDialog.Builder(this)
+                .setMessage(L.t("Remove „" + name + "“ from this phone? To use it again you link it once more.",
+                        "„" + name + "“ von diesem Handy entfernen? Um ihn wieder zu nutzen, verknüpfst du ihn neu."))
+                .setPositiveButton(L.t("Remove", "Entfernen"), (d, w) -> {
+                    try {
+                        org.json.JSONArray list = new org.json.JSONArray(prefs.getString("pcs", "[]")), out = new org.json.JSONArray();
+                        for (int i = 0; i < list.length(); i++) if (!list.getJSONObject(i).optString("id").equals(id)) out.put(list.get(i));
+                        prefs.edit().putString("pcs", out.toString()).apply();
+                    } catch (Exception ignored) { }
+                })
+                .setNegativeButton(L.t("Cancel", "Abbrechen"), null).show();
+    }
+
     // ---------- keys, lifecycle ----------
 
-    // Screen stays on only while presenting.
+    // Screen stays on only while presenting; the lock-screen controls are there only then too.
     private void applyPresenting(boolean on) {
+        presenting = on;
         if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (on) {
+            askNotificationsOnce();
+            ControlNote.show(this, slideInfo);
+        } else {
+            ControlNote.hide(this);
+        }
     }
+
+    // Android 13+: notifications need the user's OK. Asked once, the first time a presentation runs.
+    private void askNotificationsOnce() {
+        if (android.os.Build.VERSION.SDK_INT < 33 || prefs.getBoolean("asked_notes", false)) return;
+        if (checkSelfPermission("android.permission.POST_NOTIFICATIONS") == android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        prefs.edit().putBoolean("asked_notes", true).apply();
+        requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+        if (code == 7 && presenting) ControlNote.show(this, slideInfo);   // allowed just now: show the controls
+    }
+
+    // A button of the lock-screen notification: same as tapping the button on the remote.
+    private final android.content.BroadcastReceiver noteButtons = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, Intent i) {
+            String a = i.getAction(), id = ControlNote.NEXT.equals(a) ? "nextBtn" : ControlNote.PREV.equals(a) ? "prevBtn"
+                    : ControlNote.BLACK.equals(a) ? "blkBtn" : null;
+            if (id != null && web.getVisibility() == View.VISIBLE)
+                web.evaluateJavascript("(function(){var b=document.getElementById('" + id + "');if(b&&!b.disabled)b.click();})()", null);
+        }
+    };
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
@@ -712,17 +876,21 @@ public class MainActivity extends Activity {
         if (base != null) updater.autoCheck(base);
     }
 
-    // App in the background: pause everything (battery).
+    // App in the background: pause everything (battery) - except while presenting, so the lock-screen buttons work at once.
     @Override
     protected void onPause() {
-        web.onPause();
-        web.pauseTimers();                   // nothing runs while the app is in the background (battery)
+        if (!presenting) {
+            web.onPause();
+            web.pauseTimers();
+        }
         super.onPause();
     }
 
     // Cleans up the WebView and the network watcher.
     @Override
     protected void onDestroy() {
+        ControlNote.hide(this);
+        try { unregisterReceiver(noteButtons); } catch (Exception ignored) { }
         ui.removeCallbacksAndMessages(null);
         try { getSystemService(ConnectivityManager.class).unregisterNetworkCallback(netCallback); } catch (Exception ignored) { }
         ((ViewGroup) web.getParent()).removeView(web);

@@ -36,9 +36,19 @@ function render() {
         <select id="ownLang" class="lv-lang" data-noi18n aria-label="Language"></select></div>
       <div class="lv-stage"><div id="stage"></div><div class="lv-black" id="black">Screen is black</div></div>
       <div class="lv-meta"><span id="count"></span><span id="speaker" class="lv-speaker"></span></div>
-      <div id="poll"></div>`;
+      <div id="poll"></div>
+      <div class="lv-ask" id="ask">
+        <h3>💬 Ask a question</h3>
+        <textarea id="askText" maxlength="280" rows="2" placeholder="Your question to the presenter"></textarea>
+        <div class="lv-ask-row"><input id="askName" maxlength="30" placeholder="Your name (optional)">
+          <button id="askBtn">Send</button></div>
+        <div class="lv-note" id="askNote">The presenter sees it first and decides whether it goes on the screen.</div>
+      </div>`;
     shownKey = null;
+    $('#askName').value = localStorage.getItem('sl-ask-name') || '';
+    $('#askBtn').onclick = sendQuestion;
   }
+  $('#ask').hidden = S.questions_open === false;
   const sel = $('#ownLang');
   if (sel && !sel.options.length) {
     sel.innerHTML = `<option value="">🌐 ${I18N.lang.toUpperCase()}</option>` + Object.entries(I18N_LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
@@ -100,6 +110,19 @@ document.addEventListener('click', async e => {
     body: JSON.stringify({ k: KEY, poll, option, voter: VOTER }) }).then(r => r.json()).catch(() => ({ ok: false }));
   if (!r.ok) { localStorage.removeItem('sl-vote-' + poll); renderPoll(); alert(r.error || 'Could not vote. Try again.'); }
 });
+
+// Sends a question to the presenter (not straight to the screen).
+async function sendQuestion() {
+  const text = $('#askText').value.trim(), name = $('#askName').value.trim(), b = $('#askBtn'), note = $('#askNote');
+  if (!text) return $('#askText').focus();
+  localStorage.setItem('sl-ask-name', name);
+  b.disabled = true;
+  const r = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ k: KEY, text, name, voter: VOTER }) }).then(r => r.json()).catch(() => ({ ok: false }));
+  b.disabled = false;
+  if (r.ok) { $('#askText').value = ''; note.textContent = 'Sent! The presenter decides whether it goes on the screen.'; }
+  else note.textContent = r.error || 'Could not send. Try again.';
+}
 
 if (!KEY) message('This link is incomplete. Scan the QR code shown by the presenter.');
 else connect();

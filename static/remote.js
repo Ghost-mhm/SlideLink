@@ -174,6 +174,11 @@ async function showOnPC() {
 /* Android app: keep the screen on only while presenting (presentation on the PC or timer running) */
 // Android app: screen stays on only while presenting.
 function presentingChanged() {
+  if (window.SlideLinkApp && SlideLinkApp.setPcName && S && S.pc_name) SlideLinkApp.setPcName(S.pc_name);   // list of PCs
+  if (window.SlideLinkApp && SlideLinkApp.setSlideInfo && S) {        // lock-screen controls: where we are
+    const n = slides().length;
+    SlideLinkApp.setSlideInfo(n ? `${S.present.index + 1} / ${n} · ${S.deck.title}${S.present.blackout ? ' · ⬛' : ''}` : S.deck.title);
+  }
   const now = !!((S && S.pc_windows && S.pc_windows.present) || timer.run);
   if (now === lastPresenting) return;
   lastPresenting = now;
@@ -253,15 +258,29 @@ async function liveAction(kind, el) {
   if (kind === 'end') return api({ op: 'poll_end' });
   if (kind === 'clear') return api({ op: 'poll_clear' });
   if (kind === 'speaker') return api({ op: 'speaker_set', name: el.dataset.name || '' });
+  if (kind === 'qshow') return api({ op: 'question_show', id: el.dataset.id, on: !el.classList.contains('on') });
+  if (kind === 'qdel') return api({ op: 'question_dismiss', id: el.dataset.id });
+  if (kind === 'qclear') { if (confirm('Remove all questions?')) api({ op: 'questions_clear' }); return; }
+  if (kind === 'qopen') return api({ op: 'questions_open', on: !S.questions_open });
 }
 
 // The Live sheet. The poll form is drawn only once, so typing is never interrupted by live updates.
 function renderLiveSheet() {
   const body = $('#sheetBody');
   if (!body.querySelector('#lvAud')) {
-    body.innerHTML = `${MODE === 'group' ? '' : '<div class="lv-sec grp-sec" id="lvGroup"></div>'}<div class="lv-sec" id="lvAud"></div><div class="lv-sec" id="lvPoll"></div><div class="lv-sec" id="lvCrew"></div>`;
+    body.innerHTML = `${MODE === 'group' ? '' : '<div class="lv-sec grp-sec" id="lvGroup"></div>'}<div class="lv-sec" id="lvAud"></div><div class="lv-sec" id="lvAsk"></div><div class="lv-sec" id="lvPoll"></div><div class="lv-sec" id="lvCrew"></div>`;
     body._h = null;
   }
+  // audience questions: only the presenter decides which one goes on the screen
+  const qs = S.questions || [];
+  setHTML($('#lvAsk'), `<h4>💬 Questions${qs.length ? ` <span data-noi18n>(${qs.length})</span>` : ''}</h4>
+    ${qs.length ? qs.slice().reverse().map(q => `<div class="lv-q${q.show ? ' on' : ''}"><p>${esc(q.text)}</p>
+      <div class="lv-q-row"><small>${q.name ? esc(q.name) + ' · ' : ''}${ago(q.at)}</small>
+        <button data-live="qshow" data-id="${q.id}" class="${q.show ? 'on' : ''}">${q.show ? 'Hide from screen' : '📺 Show on screen'}</button>
+        <button data-live="qdel" data-id="${q.id}" aria-label="Remove">✕</button></div></div>`).join('')
+      : `<p class="muted">Viewers can send questions from the audience page. They show up here first; nothing appears on the screen until you tap “Show on screen”.</p>`}
+    <div class="lv-row"><button data-live="qopen" class="${S.questions_open ? 'on' : ''}">${S.questions_open ? 'Questions are open' : 'Questions are closed'}</button>
+      ${qs.length ? '<button data-live="qclear">Remove all</button>' : ''}</div>`);
   if ($('#lvGroup')) setHTML($('#lvGroup'), groupAdminHTML());
   const a = S.audience || {};
   setHTML($('#lvAud'), `<h4>👥 Audience</h4>
@@ -325,8 +344,13 @@ function renderSheet() {
 
 /* ---------- live view ---------- */
 // Updates the remote: preview (still or live), counters, notes, buttons.
+let seenQuestions = null;    // ids of questions already noticed (a new one: buzz + dot on "Live")
 function renderRemote() {
   renderLaser();
+  const qids = (S.questions || []).map(q => q.id);
+  if (seenQuestions && qids.some(id => !seenQuestions.has(id)) && sheet !== 'live') { buzz([30, 80, 30]); $('#liveBtnSheet').classList.add('dot'); }
+  if (sheet === 'live') $('#liveBtnSheet').classList.remove('dot');
+  seenQuestions = new Set(qids);
   const list = slides(), i = S.present.index, s = list[i], nx = list[i + 1];
   const steps = hsSteps(s), step = S.present.step || 0;
   $('#rTitle').textContent = S.deck.title;
