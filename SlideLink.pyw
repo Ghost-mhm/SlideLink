@@ -519,7 +519,7 @@ def main():
     server.ON_OPEN_PC = lambda: open_window("/", fullscreen=True)           # "Open on PC" from the phone
     server.ON_CLOSE_PC = close_windows                                     # "Close window" from the phone
     server.start_background()                                              # watches ~/Claude Presentations
-    httpd = ThreadingHTTPServer(("0.0.0.0", PORT), server.Handler)
+    httpd = ThreadingHTTPServer((server.LOCAL_BIND, PORT), server.Handler)   # plain http: this PC only, phones use HTTPS
     httpd.daemon_threads = True
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     print(f"server on {URL}, data in {server.DATA_DIR}")

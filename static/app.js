@@ -288,6 +288,12 @@ function showLinkScreen(message) {
   $('#linkForm').onsubmit = async e => {
     e.preventDefault();
     $('#linkErr').textContent = '';
+    if (window.SlideLinkApp && SlideLinkApp.pairE2E && KIND !== 'pc') {
+      // app 1.16+: the app links end-to-end encrypted (it shows a number to compare with the PC)
+      window.__slPairErr = msg => { $('#linkErr').textContent = msg; };
+      SlideLinkApp.pairE2E($('#code').value, $('#devName').value);
+      return;
+    }
     const j = await post('/api/pair', { code: $('#code').value, name: $('#devName').value, type: KIND });
     if (j.ok) {
       localStorage.setItem(TOKEN_KEY, j.token);
@@ -301,7 +307,7 @@ function showLinkScreen(message) {
 
 /* ---------------- Linked devices panel ---------------- */
 let devModal = null, linkCode = null, linkedNotice = null, tsInfo = null;
-const VIA_LABEL = { relay: '🌍 via SlideLink Relay', wifi: '📶 via Wi-Fi', internet: '🔒 via internet (HTTPS)' };
+const VIA_LABEL = { e2e: '🔒 end-to-end via Relay', relay: '🌍 via SlideLink Relay', wifi: '📶 via Wi-Fi', internet: '🔒 via internet (HTTPS)' };
 const TYPE_ICON = { host: '🖥', pc: '💻', phone: '📱', tablet: '📟' };
 const ROLE_LABEL = { editor: 'editing', present: 'presenting', remote: 'remote control' };
 
@@ -618,7 +624,14 @@ async function onDevClick(e) {
   const b = e.target.closest('button[data-act]');
   if (!b) return;
   const id = b.dataset.id, dev = S.linked.find(d => d.id === id);
-  if (b.dataset.act === 'newcode') {
+  if (b.dataset.act === 'e2eyes' || b.dataset.act === 'e2eno') {
+    const yes = b.dataset.act === 'e2eyes';
+    if (yes || confirm('The numbers are different? Then someone may be in between. The pairing is cancelled and the code stops working.')) {
+      const j = await post('/api/e2e/pair/confirm', { id: b.dataset.pid, yes });
+      if (j.ok) linkCode = yes ? linkCode : null;
+      renderDevices();
+    }
+  } else if (b.dataset.act === 'newcode') {
     const j = await post('/api/devices/code', {});
     if (j.ok) { linkCode = { ...j, known: new Set(S.linked.map(d => d.id)) }; renderDevices(); }
   } else if (b.dataset.act === 'rename' && dev) {
@@ -647,7 +660,7 @@ function renderDevices() {
     return `<li class="dev">
       <span class="dev-icon">${TYPE_ICON[d.type] || '📱'}</span>
       <div class="dev-main">
-        <div class="dev-name">${esc(d.name)}${self ? ' <span class="tag">this device</span>' : ''}${d.type === 'host' ? ' <span class="tag">host · always linked</span>' : ''}</div>
+        <div class="dev-name">${esc(d.name)}${d.e2e ? ' <span class="tag tag-e2e" title="End-to-end encrypted">🔒</span>' : ''}${self ? ' <span class="tag">this device</span>' : ''}${d.type === 'host' ? ' <span class="tag">host · always linked</span>' : ''}</div>
         <div class="dev-status">${status}</div>
         ${d.created_at ? `<div class="dev-status">Linked ${new Date(d.created_at * 1000).toLocaleDateString()}</div>` : ''}
       </div>
@@ -658,6 +671,17 @@ function renderDevices() {
   }).join(''));
 
   let box = '<button class="primary" data-act="newcode" style="width:100%;padding:12px">＋ Link a new device</button>';
+  // end-to-end pairing: the user compares the number on both screens (a relay in the middle can't make them match)
+  const e2e = IS_HOST ? (S.e2e_pair || []) : [];
+  if (e2e.length) {
+    box = e2e.map(p => `<div class="code-card sas-card">
+        <div class="muted"><b data-noi18n>${esc(p.name)}</b>: <span>Link end-to-end encrypted?</span> <span>Does the phone show this number?</span></div>
+        <div class="big-code">${p.sas.slice(0, 3)} ${p.sas.slice(3)}</div>
+        <div class="sas-btns"><button class="primary" data-act="e2eyes" data-pid="${esc(p.id)}">Yes, same number</button>
+          <button class="danger" data-act="e2eno" data-pid="${esc(p.id)}">No, different</button></div>
+        <div class="muted" style="font-size:12px;margin-top:8px">Only confirm if the numbers are exactly the same.</div>
+      </div>`).join('');
+  }
   if (linkCode) {
     const fresh = list.find(d => !linkCode.known.has(d.id));
     if (fresh) { linkedNotice = { name: fresh.name, until: Date.now() + 10000 }; linkCode = null; }
@@ -686,13 +710,17 @@ function renderDevices() {
   const lb = $('#linkBox', devModal);
   if (lb._h !== box) { lb.innerHTML = box; lb._h = box; }
 }
-setInterval(() => devModal && renderDevices(), 1000);
+setInterval(() => {
+  if (devModal) renderDevices();
+  else if (IS_HOST && S && (S.e2e_pair || []).length && typeof openDevices === 'function') { document.querySelectorAll('.qr-modal').forEach(m => m.closest('.modal-back').remove()); openDevices(); }   // a phone waits for "yes"
+}, 1000);
 
 /* ======================================================================
    EDITOR
    ====================================================================== */
 const pending = {};
 let pendingTimer = null;
+var IS_HOST = false;
 
 // EN: Keeps the user's unsaved edits visible while server updates arrive.
 // DE: Hält ungespeicherte Änderungen sichtbar, während Server-Updates eintreffen.
@@ -1154,6 +1182,7 @@ function render() {
   if (!who.linked) return showLinkScreen();
   ME = who.device;
   DEVICE = who.is_host ? 'PC' : ME.name;
+  IS_HOST = !!who.is_host;
   // phones and tablets are remote controls for the desktop app: no editor or library there
   if (ME && (ME.type === 'phone' || ME.type === 'tablet') && MODE !== 'remote' && MODE !== 'present') {
     return location.replace('/remote');

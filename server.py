@@ -486,23 +486,35 @@ class Registry:
     # DE: Verknüpft ein neues Gerät mit dem Code; gibt Gerät und neues Token zurück. 8 Fehlversuche machen den Code ungültig.
     def pair(self, code, name, kind):
         with self.lock:
-            if not self.code or time.time() > self.code_exp:
-                raise ValueError("No active link code. On the PC open ⚙ Linked devices → Link a new device.")
-            if not secrets.compare_digest(str(code or "").strip().replace(" ", ""), self.code):
-                self.code_tries += 1
-                if self.code_tries >= 8:
-                    self.code = None
-                    raise ValueError("Too many wrong codes. Create a new code on the PC.")
-                raise ValueError("Wrong code - check the number shown on the PC.")
-            self.code = None  # one-time use
-            token = secrets.token_urlsafe(32)
-            now = time.time()
-            dev = {"id": new_id(), "name": self._clean_name(name),
-                   "type": kind if kind in DEVICE_TYPES else "phone",
-                   "token_hash": self._hash(token), "created_at": now, "last_seen": now}
-            self.items.append(dev)
-            self.save()
-            return dev, token
+            self.check_code(code)
+            return self.add_device(name, kind)
+
+    # EN: Checks the link code without using it up (wrong tries count; 8 kill the code). Call with the lock held.
+    # DE: Prüft den Link-Code, ohne ihn zu verbrauchen (Fehlversuche zählen; 8 machen ihn ungültig). Mit gehaltenem Lock aufrufen.
+    def check_code(self, code):
+        if not self.code or time.time() > self.code_exp:
+            raise ValueError("No active link code. On the PC open ⚙ Linked devices → Link a new device.")
+        if not secrets.compare_digest(str(code or "").strip().replace(" ", ""), self.code):
+            self.code_tries += 1
+            if self.code_tries >= 8:
+                self.code = None
+                raise ValueError("Too many wrong codes. Create a new code on the PC.")
+            raise ValueError("Wrong code - check the number shown on the PC.")
+
+    # EN: Uses up the code and links a new device; e2e_pub = the phone app's identity key (end-to-end pairing). Lock held.
+    # DE: Verbraucht den Code und verknüpft ein neues Gerät; e2e_pub = Identitätsschlüssel der Handy-App. Mit gehaltenem Lock.
+    def add_device(self, name, kind, e2e_pub=None):
+        self.code = None  # one-time use
+        token = secrets.token_urlsafe(32)
+        now = time.time()
+        dev = {"id": new_id(), "name": self._clean_name(name),
+               "type": kind if kind in DEVICE_TYPES else "phone",
+               "token_hash": self._hash(token), "created_at": now, "last_seen": now}
+        if e2e_pub:
+            dev["e2e_pub"] = e2e_pub
+        self.items.append(dev)
+        self.save()
+        return dev, token
 
     # EN: Renames a linked device.
     # DE: Benennt ein verknüpftes Gerät um.
@@ -536,7 +548,8 @@ class Registry:
                 out.append({"id": d["id"], "name": d["name"], "type": d["type"],
                             "created_at": d["created_at"], "last_seen": d["last_seen"],
                             "online": d["id"] in online, "roles": online.get(d["id"], []),
-                            "via": sorted(via.get(d["id"], [])), "app_version": d.get("app_version", "")})
+                            "via": sorted(via.get(d["id"], [])), "app_version": d.get("app_version", ""),
+                            "e2e": bool(d.get("e2e_pub"))})
         return out
 
 
@@ -835,6 +848,7 @@ class Store:
                 "linked": registry.public(self.clients), "library_version": library.version,
                 "build": app_build(),
                 "app_latest": app_latest(),
+                "e2e_pair": pairing.view() if pairing else [],
                 "poll": self.poll_public(), "speaker": self.speaker, "group": self.group_admin_view(),
                 "lang": library.meta.get("lang", "en"),
                 "audience": {"key": self.audience_key(), "url": audience_base(), "qr": self.join_qr,
@@ -1217,6 +1231,17 @@ class Store:
 
 store = Store()
 
+# EN: End-to-end pairing (phone app <-> PC through the relay). If it can't start, everything else keeps working.
+# DE: Ende-zu-Ende-Koppeln (Handy-App <-> PC über das Relay). Startet es nicht, läuft alles andere normal weiter.
+try:
+    import e2e_server
+    pairing = e2e_server.Pairing(os.path.join(DATA_DIR, "e2e-key.bin"), registry, on_change=lambda: store.publish())
+    import e2e_session
+    sessions = e2e_session.Sessions(pairing.key, registry, PORT)
+except Exception as e:          # e.g. not Windows
+    print(f"  end-to-end pairing unavailable: {e}")
+    pairing = sessions = None
+
 
 # EN: SlideLink Relay client: the PC asks the relay for requests from phones (always outgoing, no open ports),
 #     answers them through this server and streams the answer back. Ends when SlideLink ends.
@@ -1458,6 +1483,11 @@ def audience_base():
     return relay_status()["url"]
 
 
+# EN: Plain http (port 8765) is only for this PC's own window, Claude and the Chrome extension: phones use HTTPS.
+# DE: Unverschlüsseltes http (Port 8765) nur für das eigene Fenster des PCs, Claude und die Chrome-Erweiterung: Handys nutzen HTTPS.
+LOCAL_BIND = "127.0.0.1"
+
+
 def phone_urls():
     """Addresses a phone can use, best first."""
     urls = []
@@ -1467,9 +1497,7 @@ def phone_urls():
     if TLS["on"]:                                # encrypted first (the app trusts this PC's own certificate)
         for ip in lan_ips():
             urls.append({"url": f"https://{ip}:{HTTPS_PORT}", "label": "Same Wi-Fi, encrypted (SlideLink app)", "kind": "lan"})
-    for ip in lan_ips():
-        urls.append({"url": f"http://{ip}:{PORT}", "label": "Same Wi-Fi only", "kind": "lan"})
-    urls.append({"url": f"http://{socket.gethostname().lower()}.local:{PORT}", "label": "Same Wi-Fi only (if the IP changes)", "kind": "lan"})
+    # no plain http for phones: port 8765 only listens on the PC itself (127.0.0.1)
     return urls
 
 
@@ -1751,7 +1779,7 @@ class Handler(BaseHTTPRequestHandler):
             return False
         # A local proxy (the relay client, reverse proxies) forwards other devices from
         # 127.0.0.1 - those must still be linked.
-        proxied = ("X-Forwarded-For", "Forwarded", "X-SlideLink-Relay", "X-Real-IP")
+        proxied = ("X-Forwarded-For", "Forwarded", "X-SlideLink-Relay", "X-Real-IP", "X-SlideLink-E2E")
         return not any(self.headers.get(h) for h in proxied)
 
     # EN: The device token from the sl_token cookie.
@@ -1770,7 +1798,21 @@ class Handler(BaseHTTPRequestHandler):
 
     # EN: Who is asking: the PC (HOST), a linked device, or None.
     # DE: Wer fragt: der PC (HOST), ein verknüpftes Gerät oder None.
+    def _e2e_inner(self):
+        """True for a request that e2e_session decrypted and runs here on behalf of a paired phone (loopback + secret)."""
+        mark = self.headers.get("X-SlideLink-E2E")
+        return bool(mark and sessions and self.client_address[0] in ("127.0.0.1", "::1", "::ffff:127.0.0.1")
+                    and secrets.compare_digest(mark, sessions.internal))
+
     def auth(self):
+        if self.headers.get("X-SlideLink-E2E"):
+            # the phone proved itself with its end-to-end key: it is that device, whatever token or cookie it sends
+            if not self._e2e_inner():
+                return None
+            dev = sessions.device_for(self.headers.get("X-SlideLink-E2E-Device") or "")
+            if dev:
+                dev["last_seen"] = time.time()
+            return dev
         if self._is_host():
             return HOST
         dev = registry.by_token(self._token())
@@ -1882,6 +1924,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(watcher.status)
             if p == "/api/info":
                 return self._json({"port": PORT, "ips": lan_ips(), "urls": phone_urls(), "relay": relay_status(), "tls": TLS, "layouts": LAYOUTS,
+                                   "e2e": {"pub": e2e_server.b64(pairing.key.public)} if pairing else None,
                                    "statuses": STATUSES, "themes": THEMES})
             if p == "/events":
                 return self._events(parse_qs(url.query), dev)
@@ -1946,10 +1989,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, "result": result}, headers=cors)
             if p == "/api/upload":
                 return self._upload()
+            if p == "/api/e2e/req":                       # encrypted request from a paired phone (binary, proven by its key)
+                if not sessions:
+                    return self._json({"ok": False, "error": "End-to-end is not available on this PC."}, 501)
+                return sessions.handle(self)
             if not self._same_origin():
                 return self._json({"ok": False, "error": "Cross-site request blocked"}, 403)
             if p == "/api/pair":
                 return self._pair(self._body())
+            if p == "/api/e2e/hello":
+                return self._e2e_pair("hello", self._body())
+            if p.startswith("/api/e2e/pair/"):
+                return self._e2e_pair(p.rsplit("/", 1)[1], self._body())
             if p == "/api/group/join":
                 body = self._body()
                 name = re.sub(r"\s+", " ", str(body.get("name") or "")).strip()[:30]
@@ -2092,6 +2143,30 @@ class Handler(BaseHTTPRequestHandler):
                            "device": {"id": dev["id"], "name": dev["name"], "type": dev["type"]}},
                           headers=[self._set_cookie(token)])
 
+    # EN: End-to-end pairing steps (start/reveal/status from the app, confirm from the PC itself).
+    # DE: Schritte des Ende-zu-Ende-Koppelns (start/reveal/status von der App, confirm nur vom PC selbst).
+    def _e2e_pair(self, step, body):
+        if not pairing:
+            return self._json({"ok": False, "error": "End-to-end pairing is not available on this PC."}, 501)
+        if step == "start":
+            return self._json(pairing.start(body))
+        if step == "reveal":
+            return self._json(pairing.reveal(body))
+        if step == "status":
+            return self._json(pairing.status(body))
+        if step == "hello":
+            return self._json(sessions.hello(body))
+        if step == "confirm":
+            if not self._is_host():
+                return self._json({"ok": False, "error": "Only the PC itself can confirm a pairing."}, 403)
+            dev = pairing.confirm(body.get("id"), bool(body.get("yes")))
+            if dev:
+                store.log(dev["name"], "was linked to this PC (end-to-end)")
+                print(f"  Linked new device (end-to-end): {dev['name']}")
+            store.publish()
+            return self._json({"ok": True})
+        return self._json({"ok": False, "error": "not found"}, 404)
+
     # EN: Unlinks a device (not the PC) and disconnects it.
     # DE: Entfernt ein Gerät (nicht den PC) und trennt seine Verbindung.
     def _unlink(self, body, dev):
@@ -2146,7 +2221,7 @@ class Handler(BaseHTTPRequestHandler):
         role = (qs.get("role") or ["viewer"])[0][:16]
         with store.lock:
             ip = self.client_address[0]
-            via = ("pc" if dev is HOST else "relay" if self.headers.get("X-SlideLink-Relay")
+            via = ("pc" if dev is HOST else "e2e" if self._e2e_inner() else "relay" if self.headers.get("X-SlideLink-Relay")
                    else "internet" if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") else "wifi")   # 127.0.0.1 + linked device = through a proxy
             store.clients[cid] = {"role": role, "device": dev["id"], "q": q, "via": via}
             appv = (qs.get("appv") or [""])[0][:12]      # the phone app tells its version when it connects
@@ -2186,7 +2261,7 @@ class Handler(BaseHTTPRequestHandler):
 # DE: Startet nur den Server (ohne Desktop-App).
 def main():
     start_background()
-    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server = ThreadingHTTPServer((LOCAL_BIND, PORT), Handler)    # plain http: this PC only
     server.daemon_threads = True
     print("\n  SlideLink is running\n")
     print(f"  PC editor     http://localhost:{PORT}/")

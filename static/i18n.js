@@ -10,20 +10,20 @@ const I18N_LANGS = { en: 'English', de: 'Deutsch' };
 
 const I18N_DICT = { de: {
   // library, editor, presenter
-  'Library': 'Bibliothek', 'Library home': 'Bibliothek', 'Edit': 'Bearbeiten', 'Remote': 'Fernbedienung', 'Present': 'Präsentieren', 'Group & audience': 'Gruppe & Publikum', 'Claude Presentations': 'Claude Presentations', 'Add presentation': 'Präsentation hinzufügen', '▦ Library home': '▦ Bibliothek', 'Search': 'Suchen', 'Presentations': 'Präsentationen',
-  '📽 Presentations': '📽 Präsentationen', '📄 Docs': '📄 Docs', 'Docs': 'Docs', 'Today': 'Heute', 'Yesterday': 'Gestern',
+  'Library': 'Bibliothek', 'end-to-end via Relay': 'Ende-zu-Ende über das Relay', 'Link end-to-end encrypted?': 'Ende-zu-Ende-verschlüsselt verknüpfen?', 'Does the phone show this number?': 'Zeigt das Handy diese Zahl?', 'Yes, same number': 'Ja, gleiche Zahl', 'No, different': 'Nein, andere Zahl', 'Only confirm if the numbers are exactly the same.': 'Nur bestätigen, wenn die Zahlen genau gleich sind.', 'end-to-end': 'Ende-zu-Ende', 'End-to-end encrypted': 'Ende-zu-Ende-verschlüsselt', 'The numbers are different? Then someone may be in between. The pairing is cancelled and the code stops working.': 'Die Zahlen sind verschieden? Dann könnte jemand dazwischen sein. Das Verknüpfen wird abgebrochen und der Code ungültig.', 'Android app:': 'Android-App:', 'open': 'öffne', 'on the phone, install it, then enter this code in the app.': 'auf dem Handy, installiere sie und gib dann diesen Code in der App ein.', 'All presentations': 'Alle Präsentationen', 'Presentation title': 'Präsentationstitel', 'Theme': 'Design', 'Move up': 'Nach oben', 'Move down': 'Nach unten', 'Me now': 'Jetzt ich', 'Loading…': 'Lädt…', 'bullet ·': 'Aufzählung ·', 'sub-bullet ·': 'Unterpunkt ·', 'heading ·': 'Überschrift ·', 'quote ·': 'Zitat ·', 'image ·': 'Bild ·', 'next column': 'nächste Spalte', 'Layout': 'Layout', 'Status': 'Status', 'Editor': 'Editor', 'LIVE': 'LIVE', 'SlideLink Relay': 'SlideLink-Relay', 'Library home': 'Bibliothek', 'Edit': 'Bearbeiten', 'Remote': 'Fernbedienung', 'Present': 'Präsentieren', 'Group & audience': 'Gruppe & Publikum', 'Claude Presentations': 'Claude Presentations', 'Add presentation': 'Präsentation hinzufügen', 'Search': 'Suchen', 'Presentations': 'Präsentationen',
+  'Docs': 'Docs', 'Today': 'Heute', 'Yesterday': 'Gestern',
   '＋ New presentation': '＋ Neue Präsentation', '⬆ Upload presentation': '⬆ Präsentation hochladen',
-  '📁 Claude Presentations': '📁 Claude Presentations', '⚙ Linked devices': '⚙ Verknüpfte Geräte', '🔗 Linked devices': '🔗 Verknüpfte Geräte',
-  '👥 Group & audience': '👥 Gruppe & Publikum', '▶ PRESENT': '▶ PRÄSENTIEREN', '▶ Present': '▶ Präsentieren',
-  '✎ Edit': '✎ Bearbeiten', '📱 Remote': '📱 Fernbedienung', 'Duplicate': 'Duplizieren', 'Delete': 'Löschen',
+  
+  '▶ PRESENT': '▶ PRÄSENTIEREN', 
+  'Duplicate': 'Duplizieren', 'Delete': 'Löschen',
   'Slides': 'Folien', 'Loading slides…': 'Folien werden geladen…', 'Loading your presentations…': 'Deine Präsentationen werden geladen…',
   'No matches': 'Keine Treffer', 'No presentations yet': 'Noch keine Präsentationen', 'Nothing here yet.': 'Hier ist noch nichts.',
   'No docs yet. Docs saved in “Claude Presentations\\Docs” appear here.': 'Noch keine Docs. Docs, die in „Claude Presentations\\Docs“ gespeichert werden, erscheinen hier.',
-  'Document': 'Dokument', 'From claude.ai': 'Von claude.ai', '✦ From claude.ai': '✦ Von claude.ai', 'OPEN': 'OFFEN', '● open': '● offen',
+  'Document': 'Dokument', 'From claude.ai': 'Von claude.ai', 'OPEN': 'OFFEN', '● open': '● offen',
   '● open on all devices': '● auf allen Geräten offen', 'Empty': 'Leer', 'Untitled presentation': 'Unbenannte Präsentation',
   'Name of the new presentation': 'Name der neuen Präsentation', 'Nothing imported': 'Nichts importiert',
   'Present this slide': 'Ab dieser Folie präsentieren', 'Present from this slide': 'Ab dieser Folie präsentieren',
-  '◀ Library': '◀ Bibliothek', '+ Add slide': '+ Folie hinzufügen', '+ Slide': '+ Folie', 'New slide': 'Neue Folie',
+  '+ Add slide': '+ Folie hinzufügen', 'New slide': 'Neue Folie',
   'Activity': 'Aktivität', 'Title': 'Titel', 'Content': 'Inhalt', 'Layout': 'Layout', 'Status': 'Status',
   'Title slide': 'Titelfolie', 'Title + content': 'Titel + Inhalt', 'Section header': 'Abschnittstitel', 'Two columns': 'Zwei Spalten',
   'Quote': 'Zitat', 'Image': 'Bild', 'Designed slide (HTML)': 'Gestaltete Folie (HTML)', 'Interactive page (HTML app)': 'Interaktive Seite (HTML-App)',
@@ -36,7 +36,7 @@ const I18N_DICT = { de: {
   'Resync all screens (R)': 'Alle Bildschirme neu synchronisieren (R)', 'Screen is black': 'Bildschirm ist schwarz',
   'SlideLink – Presenting': 'SlideLink – Präsentation', 'SlideLink – Editor': 'SlideLink – Editor',
   // devices, linking
-  'Linked devices': 'Verknüpfte Geräte', '+ Link a new device': '+ Neues Gerät verknüpfen', '＋ Link a new device': '＋ Neues Gerät verknüpfen',
+  'Linked devices': 'Verknüpfte Geräte', 
   'Link a new device': 'Neues Gerät verknüpfen', 'Linked devices stay connected permanently and reconnect on their own. Only linked devices can see or control your presentations.':
     'Verknüpfte Geräte bleiben dauerhaft verbunden und verbinden sich selbst neu. Nur verknüpfte Geräte können deine Präsentationen sehen oder steuern.',
   'Rename': 'Umbenennen', 'Unlink': 'Entfernen', 'this device': 'dieses Gerät', 'host · always linked': 'PC · immer verknüpft', 'Online': 'Online', 'Offline': 'Offline',
@@ -59,10 +59,10 @@ const I18N_DICT = { de: {
   'Can’t reach SlideLink on your PC – is it running? Retrying…': 'SlideLink auf dem PC ist nicht erreichbar – läuft es? Neuer Versuch…',
   'Not connected': 'Nicht verbunden', 'Bad response': 'Ungültige Antwort',
   // remote
-  'SlideLink Remote': 'SlideLink Fernbedienung', 'Next': 'Weiter', 'Next ▶': 'Weiter ▶', 'Reveal ▶': 'Zeigen ▶', 'Blackout': 'Schwarz',
+  'SlideLink Remote': 'SlideLink Fernbedienung', 'Next': 'Weiter', 'Reveal ▶': 'Zeigen ▶', 'Blackout': 'Schwarz',
   'End of presentation': 'Ende der Präsentation', 'No speaker notes for this slide.': 'Keine Sprechernotizen für diese Folie.',
   'Decks': 'Decks', 'Devices': 'Geräte', 'Live': 'Live', 'On PC': 'Auf PC', 'Close': 'Schließen', 'Opening': 'Öffne', 'Closing': 'Schließe',
-  '○ Still': '○ Standbild', '● Live': '● Live', 'Interactive page': 'Interaktive Seite', 'Document · Next scrolls': 'Dokument · Weiter scrollt',
+  '○ Still': '○ Standbild', 'Interactive page': 'Interaktive Seite', 'Document · Next scrolls': 'Dokument · Weiter scrollt',
   '● Presentation on PC': '● Präsentation auf PC', '● SlideLink open on PC': '● SlideLink auf PC offen', '○ No SlideLink window on PC': '○ Kein SlideLink-Fenster auf PC',
   'All screens resynced': 'Alle Bildschirme neu synchronisiert', 'Showing the presentation on the PC (fullscreen)…': 'Präsentation wird auf dem PC gezeigt (Vollbild)…',
   'Closing the window on the PC…': 'Fenster auf dem PC wird geschlossen…', 'Opening SlideLink on the PC (fullscreen)…': 'SlideLink wird auf dem PC geöffnet…',
@@ -73,7 +73,7 @@ const I18N_DICT = { de: {
   'New link': 'Neuer Link', 'New link (the old one stops working)': 'Neuer Link (der alte funktioniert dann nicht mehr)', 'Audience link copied': 'Publikums-Link kopiert',
   'Make a new audience link? Everyone watching with the old link is disconnected.': 'Neuen Publikums-Link erstellen? Wer mit dem alten Link zusieht, wird getrennt.',
   'New audience link? Everyone watching with the old link is disconnected.': 'Neuer Publikums-Link? Wer mit dem alten Link zusieht, wird getrennt.',
-  '📊 New poll': '📊 Neue Umfrage', 'New poll': 'Neue Umfrage', 'Start poll': 'Umfrage starten', 'End voting': 'Abstimmung beenden',
+  'New poll': 'Neue Umfrage', 'Start poll': 'Umfrage starten', 'End voting': 'Abstimmung beenden',
   '📺 Show results on screen': '📺 Ergebnis auf Leinwand zeigen', 'Hide results on screen': 'Ergebnis auf Leinwand ausblenden',
   'Question, e.g. Which topic next?': 'Frage, z. B. Welches Thema als Nächstes?', 'Enter a question and at least 2 answers.': 'Gib eine Frage und mindestens 2 Antworten ein.',
   'Poll started: the audience can vote now': 'Umfrage gestartet: Das Publikum kann jetzt abstimmen', 'Poll closed': 'Umfrage beendet',
@@ -102,9 +102,9 @@ const I18N_DICT = { de: {
   'This link is incomplete. Scan the QR code shown by the presenter.': 'Dieser Link ist unvollständig. Scanne den QR-Code der vortragenden Person.',
   'This audience link is no longer valid.': 'Dieser Publikums-Link ist nicht mehr gültig.', 'This poll is closed.': 'Diese Umfrage ist beendet.',
   'The phone is a remote control - edit presentations on the PC.': 'Das Handy ist eine Fernbedienung – Präsentationen am PC bearbeiten.',
-  'Group members control the presentation only.': 'Gruppenmitglieder steuern nur die Präsentation.', '🌐 Language': '🌐 Sprache',
+  'Group members control the presentation only.': 'Gruppenmitglieder steuern nur die Präsentation.', 
   'Same as the presenter': 'Wie die vortragende Person', 'My language': 'Meine Sprache',
-  '🌐 My language': '🌐 Meine Sprache', 'Language': 'Sprache', 'for SlideLink on all screens': 'für SlideLink auf allen Bildschirmen',
+  'Language': 'Sprache', 'for SlideLink on all screens': 'für SlideLink auf allen Bildschirmen',
   'Language for SlideLink on all screens': 'Sprache für SlideLink auf allen Bildschirmen',
   'PowerPoint, claude.ai deck (.zip), HTML deck, images': 'PowerPoint, claude.ai-Deck (.zip), HTML-Deck, Bilder',
   'Everything Claude saves in this folder appears here automatically': 'Alles, was Claude in diesem Ordner speichert, erscheint hier automatisch',
@@ -116,9 +116,9 @@ const I18N_DICT = { de: {
   'Update': 'Aktualisieren', 'Appearance': 'Anzeige', '🌓 Brightness': '🌓 Helligkeit', '☀️ Light': '☀️ Hell', '🌙 Dark': '🌙 Dunkel', '💻 System': '💻 System',
   'For this device only. Slides and the presentation screen keep their own colors.': 'Nur für dieses Gerät. Folien und die Leinwand behalten ihre eigenen Farben.',
   '⚙ Settings (language, brightness)': '⚙ Einstellungen (Sprache, Helligkeit)',
-  '＋ Add presentation': '＋ Präsentation hinzufügen',
+  
   'PowerPoint, claude.ai deck (.zip), HTML, PDF doc, images – or drag files here': 'PowerPoint, claude.ai-Deck (.zip), HTML, PDF-Doc, Bilder – oder Dateien hierher ziehen',
-  'Slide': 'Folie', 'More': 'Mehr', '✎ Edit': '✎ Bearbeiten', '⧉ Duplicate': '⧉ Duplizieren', '🗑 Delete': '🗑 Löschen', 'Duplicated': 'Dupliziert',
+  'Slide': 'Folie', 'More': 'Mehr', '✎ Edit': '✎ Bearbeiten', 'Duplicated': 'Dupliziert',
   '✎ Edit presentation': '✎ Präsentation bearbeiten', 'Speaker notes are shown on the phone remote while you present.': 'Sprechernotizen erscheinen beim Präsentieren auf der Handy-Fernbedienung.',
   'Speaker notes for this slide': 'Sprechernotizen für diese Folie', 'Cancel': 'Abbrechen', 'Save': 'Speichern', 'Saved': 'Gespeichert',
   '🌍 via SlideLink Relay': '🌍 über SlideLink-Relay', 'Anywhere – SlideLink Relay': 'Überall – SlideLink-Relay',
@@ -129,7 +129,7 @@ const I18N_DICT = { de: {
   'Use the <b>SlideLink Relay</b> address. Then the phone works from any network.': 'Nimm die <b>SlideLink-Relay</b>-Adresse. Dann funktioniert das Handy aus jedem Netz.',
   'Without a relay, the phone must be on the same Wi-Fi.': 'Ohne Relay muss das Handy im gleichen WLAN sein.',
   'Same Wi-Fi, encrypted (SlideLink app)': 'Gleiches WLAN, verschlüsselt (SlideLink-App)',
-  'Settings': 'Einstellungen', '⚙ Settings': '⚙ Einstellungen', 'General': 'Allgemein', '🌐 Language': '🌐 Sprache',
+  'Settings': 'Einstellungen', 'General': 'Allgemein', '🌐 Language': '🌐 Sprache',
   'SlideLink on all screens: PC, phones, co-presenters and audience. Guests can still choose their own.':
     'SlideLink auf allen Bildschirmen: PC, Handys, Mitvortragende und Publikum. Gäste können trotzdem ihre eigene wählen.',
   'Sync problem': 'Sync-Problem', 'Auto-sync on': 'Auto-Sync an', 'last': 'zuletzt', 'added': 'hinzugefügt', 'updated': 'aktualisiert', 'unchanged': 'unverändert',
@@ -179,19 +179,36 @@ const I18N = (() => {
     const nav = (navigator.language || 'en').slice(0, 2);
     return I18N_LANGS[nav] ? nav : 'en';
   }
+  // symbols at the start/end of a text: emoji, arrows, check marks, plus signs, dots (kept, the rest is translated)
+  const SYM_EDGES = /^([^\p{L}\p{N}(]*?)(\p{L}[\s\S]*?[\p{L}\p{N}.!?…)]?)([^\p{L}\p{N}]*)$/u;
+  const missing = new Set();   // English texts seen without a translation (I18N.missing() in the console)
   function t(text) {
     if (lang === 'en' || !text) return text;
     const dict = I18N_DICT[lang] || {}, trimmed = text.trim();
     if (!trimmed) return text;
     const key = trimmed.replace(/\s+/g, ' ');          // texts wrapped over several lines in the code
-    let out = dict[key];
+    let out = lookup(dict, key);
     if (out === undefined) {
-      for (const [re, rep] of I18N_PATTERNS[lang] || []) {
-        if (re.test(key)) { out = key.replace(re, rep); break; }
-      }
+      // icons, arrows or symbols around a text ("▶ Next", "✓ Saved", "Next →") never break its translation
+      const m = key.match(SYM_EDGES);
+      const core = m && m[2];
+      const inner = core && core !== key ? lookup(dict, core) : undefined;
+      if (inner !== undefined) out = m[1] + inner + m[3];
     }
-    if (out === undefined) return text;
+    if (out === undefined) {
+      if (/[A-Za-z]{2}/.test(key) && key.length < 200 && !translated(dict).has(key)) missing.add(key);
+      return text;
+    }
     return text.replace(trimmed, out);        // keep the surrounding spaces
+  }
+  // EN: Exact text, then the number/name patterns.
+  // DE: Genauer Text, dann die Muster mit Zahlen/Namen.
+  let outs = null;   // all translations, so already translated texts are not reported as missing
+  const translated = dict => outs || (outs = new Set(Object.values(dict)));
+  function lookup(dict, key) {
+    if (Object.prototype.hasOwnProperty.call(dict, key)) return dict[key];
+    for (const [re, rep] of I18N_PATTERNS[lang] || []) if (re.test(key)) return key.replace(re, rep);
+    return undefined;
   }
   function translateNode(n) {
     if (n.nodeType === 3) {
@@ -242,6 +259,8 @@ const I18N = (() => {
   window.prompt = (m, d) => _prompt(t(String(m)), d === undefined ? d : t(String(d)));
   return {
     get lang() { return lang; },
+    /** English texts shown without a translation since the page loaded (to fill gaps in I18N_DICT) */
+    missing: () => [...missing].sort(),
     locale: () => (lang === 'de' ? 'de-DE' : 'en-GB'),
     t,
     /** called with the admin's language from every state update */

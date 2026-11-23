@@ -7,7 +7,7 @@ $out = Join-Path $PSScriptRoot 'build'
 Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$out\payload", "$root\dist" | Out-Null
 $files = 'server.py','mcp_server.py','SlideLink.pyw','import_claude_deck.py','make_icon.ps1','pdf_pages.ps1',
-         'save_doc.py','save_deck.py','updater.py','wsmini.py','make_cert.ps1','README.md','install.ps1','uninstall.ps1'
+         'save_doc.py','save_deck.py','updater.py','wsmini.py','e2e.py','e2e_server.py','e2e_session.py','make_cert.ps1','README.md','install.ps1','uninstall.ps1'
 foreach ($f in $files) { Copy-Item (Join-Path $root $f) "$out\payload\" }
 Copy-Item (Join-Path $root 'static'), (Join-Path $root 'chrome-extension') "$out\payload\" -Recurse
 Add-Type -AssemblyName System.IO.Compression.FileSystem

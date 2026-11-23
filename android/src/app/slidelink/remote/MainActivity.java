@@ -31,6 +31,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -51,6 +52,7 @@ import javax.net.ssl.X509TrustManager;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * SlideLink remote for Android: the phone remote of the SlideLink desktop app in a full-screen app.
@@ -102,7 +104,31 @@ public class MainActivity extends Activity {
         }
     }
     private Updater updater;
-    private boolean groupMode;          // joined someone's group session (co-presenter), not linked to a PC
+    private boolean groupMode;
+    private volatile E2eWeb e2eWeb;     // end-to-end mode: the page runs on a virtual address, all traffic encrypted
+    private E2eKeys keys;
+    private AlertDialog pairDialog;
+
+    // EN: This phone's end-to-end key (created on first use, kept in the Android Keystore).
+    // DE: Der Ende-zu-Ende-Schlüssel dieses Handys (beim ersten Gebrauch erzeugt, im Android-Keystore).
+    private synchronized E2eKeys keys() throws Exception {
+        if (keys == null) keys = new E2eKeys();
+        return keys;
+    }
+
+    // EN: Opens connections; on the home Wi-Fi only the paired PC's own certificate is trusted.
+    // DE: Öffnet Verbindungen; im Heim-WLAN wird nur dem eigenen Zertifikat des gekoppelten PCs vertraut.
+    private final E2e.Opener opener = u -> {
+        HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
+        if (c instanceof HttpsURLConnection && isLan(u)) pinned((HttpsURLConnection) c);
+        return c;
+    };
+
+    // EN: True once this phone is paired end-to-end with its PC.
+    // DE: True, sobald dieses Handy Ende-zu-Ende mit seinem PC gekoppelt ist.
+    private boolean e2ePaired() {
+        return !prefs.getString("e2e_dev", "").isEmpty() && !prefs.getString("e2e_pc", "").isEmpty();
+    }          // joined someone's group session (co-presenter), not linked to a PC
 
     /** Used by the SlideLink page (⚙ panel): app version + "Check for updates". */
     // EN: JavaScript bridge (window.SlideLinkApp): the page and the app exchange version, login, addresses and state.
@@ -145,7 +171,24 @@ public class MainActivity extends Activity {
             prefs.edit().putString("remote", urls == null ? "" : urls.trim()).apply();
         }
         /** The app keeps the login itself, so it works at every address (relay, Wi-Fi). */
-        @JavascriptInterface public String getToken() { return prefs.getString("token", ""); }
+        @JavascriptInterface public String getToken() { return e2eWeb != null ? "" : prefs.getString("token", ""); }
+        /** The link page hands the code to the app: it pairs end-to-end (6-digit number check with the PC). */
+        @JavascriptInterface public void pairE2E(String code, String name) { ui.post(() -> startE2ePair(code, name)); }
+        /** fetch() with a body from the end-to-end page: encrypted by the app. */
+        @JavascriptInterface public void e2eFetch(int id, String method, String path, String headers, String body) {
+            E2eWeb w = e2eWeb;
+            if (w != null) w.fetch(web, id, method, path, headers, body);
+        }
+        @JavascriptInterface public boolean e2eActive() { return e2eWeb != null; }
+        /** Live stream (EventSource) of the end-to-end page, delivered event by event. */
+        @JavascriptInterface public void e2eStream(int id, String path) {
+            E2eWeb w = e2eWeb;
+            if (w != null) w.stream(web, id, path);
+        }
+        @JavascriptInterface public void e2eStreamClose(int id) {
+            E2eWeb w = e2eWeb;
+            if (w != null) w.closeStream(id);
+        }
         @JavascriptInterface public void setToken(String t) {
             String old = prefs.getString("token", "");
             prefs.edit().putString("token", t == null ? "" : t).apply();
@@ -206,7 +249,17 @@ public class MainActivity extends Activity {
             // DE: Hält die Navigation innerhalb von SlideLink (andere Links öffnen sich nicht in der App).
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
+                E2eWeb w = e2eWeb;
+                if (w != null) return !w.mine(req.getUrl().toString());                     // stay inside the encrypted page
                 return base == null || !req.getUrl().toString().startsWith(origin(base));   // stay inside SlideLink
+            }
+
+            // EN: End-to-end mode: every request of the page is answered encrypted by the app (nothing goes out in the clear).
+            // DE: Ende-zu-Ende-Modus: Jede Anfrage der Seite beantwortet die App verschlüsselt (nichts geht im Klartext raus).
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
+                E2eWeb w = e2eWeb;
+                return w == null ? null : w.intercept(view, req);
             }
 
             // EN: The PC's own certificate on the home Wi-Fi: accepted only if it is exactly the paired PC's.
@@ -399,6 +452,23 @@ public class MainActivity extends Activity {
         prefs.edit().putString("base", address).apply();
         offline.setVisibility(View.GONE);
         web.setVisibility(View.VISIBLE);
+        int rp = address.indexOf("/p/");
+        if (rp >= 0 && !isLan(address) && e2ePaired()) {
+            // through the relay and paired end-to-end: never send the login to the relay, encrypt everything
+            try {
+                String pcId = address.substring(rp + 3).split("[/?]")[0];
+                E2e.Client cl = new E2e.Client(address, prefs.getString("e2e_dev", ""), E2e.unb64(prefs.getString("e2e_pc", "")), keys(), opener);
+                CookieManager.getInstance().removeAllCookies(null);
+                e2eWeb = new E2eWeb(cl, pcId, () -> ui.post(this::notThePc));
+                web.loadUrl(e2eWeb.origin + "/remote");
+                updater.autoCheck(address);
+                return;
+            } catch (Exception e) {
+                showOffline(L.t("End-to-end encryption could not start on this phone.", "Die Ende-zu-Ende-Verschlüsselung konnte auf diesem Handy nicht starten."));
+                return;
+            }
+        }
+        e2eWeb = null;
         String token = prefs.getString("token", "");
         if (!token.isEmpty()) {                 // hand the login to this address before the page loads
             CookieManager cm = CookieManager.getInstance();
@@ -411,6 +481,101 @@ public class MainActivity extends Activity {
         }
         web.loadUrl(address + "/remote");
         updater.autoCheck(address);          // a newer app version on the PC? ask to update
+        ui.postDelayed(this::offerE2eUpgrade, 4000);
+    }
+
+    // EN: The relay answered with something that is not from the paired PC: stop and warn (never fall back to unencrypted).
+    // DE: Das Relay antwortete mit etwas, das nicht vom gekoppelten PC kommt: anhalten und warnen (nie unverschlüsselt weiter).
+    private void notThePc() {
+        e2eWeb = null;
+        web.stopLoading();
+        web.loadUrl("about:blank");
+        showOffline(L.t("Warning: the connection did not come from your PC. SlideLink stopped it to protect you.",
+                "Achtung: Die Verbindung kam nicht von deinem PC. SlideLink hat sie zu deinem Schutz gestoppt."));
+    }
+
+    // ---------- end-to-end pairing ----------
+
+    // EN: Pairs end-to-end with the code from the PC: shows the 6-digit number to compare and waits for "Yes" on the PC.
+    // DE: Koppelt Ende-zu-Ende mit dem Code vom PC: zeigt die 6-stellige Prüfzahl und wartet auf „Ja“ am PC.
+    private void startE2ePair(String code, String name) {
+        final String at = base;
+        if (at == null) return;
+        final AlertDialog wait = new AlertDialog.Builder(this)
+                .setTitle(L.t("Linking…", "Verknüpfe…"))
+                .setMessage(L.t("Talking to your PC…", "Verbinde mit deinem PC…"))
+                .setCancelable(false).create();
+        wait.show();
+        pairDialog = wait;
+        new Thread(() -> {
+            try {
+                E2e.Pairing p = new E2e.Pairing(at, opener, keys());
+                String sas = p.start(code, name == null || name.trim().isEmpty() ? android.os.Build.MODEL : name.trim());
+                ui.post(() -> {
+                    wait.setTitle(L.t("Compare this number", "Vergleiche diese Zahl"));
+                    wait.setMessage(sas.substring(0, 3) + " " + sas.substring(3) + "\n\n"
+                            + L.t("Your PC shows a number now. If it is the same, click „Yes“ on the PC.",
+                                  "Dein PC zeigt jetzt eine Zahl. Ist sie gleich, klicke am PC auf „Ja“."));
+                });
+                long until = System.currentTimeMillis() + 180_000;
+                while (System.currentTimeMillis() < until && pairDialog == wait) {
+                    Thread.sleep(1200);
+                    Map<String, Object> r = p.poll();
+                    String st = String.valueOf(r.get("state"));
+                    if (st.equals("confirm")) continue;
+                    if (st.equals("done")) {
+                        prefs.edit().putString("token", String.valueOf(r.get("token")))
+                                .putString("e2e_dev", String.valueOf(r.get("device")))
+                                .putString("e2e_pc", String.valueOf(r.get("pc_pub"))).apply();
+                        ui.post(() -> {
+                            wait.dismiss();
+                            pairDialog = null;
+                            base = null;
+                            findPc();          // opens the remote, now end-to-end encrypted
+                        });
+                        return;
+                    }
+                    final String msg = st.equals("rejected")
+                            ? L.t("The PC said the numbers are different. Nothing was linked. Create a new code on the PC.",
+                                  "Am PC wurde „Nein“ gewählt. Es wurde nichts verknüpft. Erzeuge am PC einen neuen Code.")
+                            : L.t("The link did not finish. Create a new code on the PC and try again.",
+                                  "Das Verknüpfen wurde nicht beendet. Erzeuge am PC einen neuen Code und versuche es erneut.");
+                    ui.post(() -> { wait.dismiss(); pairDialog = null; pairError(msg); });
+                    return;
+                }
+                ui.post(() -> { wait.dismiss(); pairDialog = null; pairError(L.t("Timed out. Try again with a new code.", "Zeit abgelaufen. Versuche es mit einem neuen Code erneut.")); });
+            } catch (Exception e) {
+                String m = e.getMessage() == null ? L.t("Could not link.", "Verknüpfen fehlgeschlagen.") : e.getMessage();
+                ui.post(() -> { wait.dismiss(); pairDialog = null; pairError(m); });
+            }
+        }).start();
+    }
+
+    // EN: Shows a pairing error on the link page (and as a dialog if the page can't show it).
+    // DE: Zeigt einen Koppelfehler auf der Link-Seite (und als Dialog, falls die Seite ihn nicht zeigen kann).
+    private void pairError(String msg) {
+        web.evaluateJavascript("window.__slPairErr&&window.__slPairErr(" + E2eWeb.jsString(msg) + ")", null);
+        new AlertDialog.Builder(this).setMessage(msg).setPositiveButton("OK", null).show();
+    }
+
+    // EN: Linked the old way (before end-to-end)? Offer once to link again end-to-end encrypted.
+    // DE: Auf die alte Art verknüpft (vor Ende-zu-Ende)? Einmal anbieten, Ende-zu-Ende neu zu verknüpfen.
+    private void offerE2eUpgrade() {
+        if (e2ePaired() || prefs.getString("token", "").isEmpty() || prefs.getBoolean("e2e_offered", false) || base == null || isLan(base)) return;
+        prefs.edit().putBoolean("e2e_offered", true).apply();
+        final EditText code = new EditText(this);
+        code.setInputType(InputType.TYPE_CLASS_NUMBER);
+        code.setHint("123456");
+        new AlertDialog.Builder(this)
+                .setTitle(L.t("Encrypt end-to-end?", "Ende-zu-Ende verschlüsseln?"))
+                .setMessage(L.t("SlideLink can now encrypt everything between this phone and your PC, so even the relay can't read it. "
+                                + "On the PC open Linked devices → Link a new device and enter the code here.",
+                        "SlideLink kann jetzt alles zwischen diesem Handy und deinem PC verschlüsseln, sodass selbst das Relay nichts lesen kann. "
+                                + "Öffne am PC Verknüpfte Geräte → Neues Gerät verknüpfen und gib den Code hier ein."))
+                .setView(code)
+                .setPositiveButton(L.t("Link", "Verknüpfen"), (d, w) -> startE2ePair(code.getText().toString().trim(), android.os.Build.MODEL))
+                .setNegativeButton(L.t("Later", "Später"), null)
+                .show();
     }
 
     // EN: Shows the 'PC not reachable' screen and retries every 5 seconds.
@@ -509,8 +674,9 @@ public class MainActivity extends Activity {
                 .setView(input)
                 .setPositiveButton(L.t("Connect", "Verbinden"), (d, w) -> {
                     String a = input.getText().toString().trim().replaceAll("/+$", "");
-                    if (!a.startsWith("http")) a = "http://" + a;
-                    if (!a.matches(".*:\\d+$")) a = a + ":8765";
+                    if (!a.startsWith("http")) a = "https://" + a;
+                    if (a.startsWith("http://")) a = "https://" + a.substring(7);
+                    if (!a.contains("/p/") && !a.matches(".*:\\d+$")) a = a + ":8766";
                     prefs.edit().putString("base", a).apply();
                     findPc();
                 })

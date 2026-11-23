@@ -29,6 +29,12 @@ keeps PC and phone in sync live, and lets Claude build presentations directly in
 - Battery friendly: still preview by default, 12 fps when live, dims while presenting, pauses in the background
 - Updates itself from your PC
 
+## New in 1.4.0: end-to-end encryption
+- **End-to-end encrypted through the relay:** between the SlideLink app and your PC everything is encrypted (slides, notes, commands, login), so even the relay can't read or change it. Pairing shows a 6-digit number on the phone and the PC, like Bluetooth; you confirm on the PC that they match.
+- **No plain http for phones:** port 8765 only listens on the PC itself; phones use the encrypted Wi-Fi address or the relay.
+- Android app 1.17 (already linked phones are offered to link again end-to-end). Audience and group members in a browser keep the normal HTTPS connection to the relay.
+- Under the hood: tidier styles, translations that survive icons and a check for missing ones, one-command releases (`release.ps1`), automatic tests (`tests/`).
+
 ## New in 1.3.3: new desktop design
 - The desktop app gets the same calm look and SlideLink's own icons as the phone.
 

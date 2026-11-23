@@ -29,6 +29,12 @@ hält PC und Handy live synchron und lässt Claude Präsentationen direkt in der
 - Akkuschonend: standardmäßig Standbild-Vorschau, 12 fps im Live-Modus, dimmt beim Präsentieren, pausiert im Hintergrund
 - Aktualisiert sich selbst über deinen PC
 
+## Neu in 1.4.0: Ende-zu-Ende-Verschlüsselung
+- **Ende-zu-Ende verschlüsselt über das Relay:** Zwischen der SlideLink-App und deinem PC ist alles verschlüsselt (Folien, Notizen, Befehle, Anmeldung), sodass selbst das Relay nichts lesen oder verändern kann. Beim Koppeln zeigen Handy und PC eine 6-stellige Zahl, wie bei Bluetooth; am PC bestätigst du, dass sie gleich ist.
+- **Kein unverschlüsseltes http mehr für Handys:** Port 8765 hört nur noch auf den PC selbst; Handys nutzen die verschlüsselte WLAN-Adresse oder das Relay.
+- Android-App 1.17 (bereits verknüpfte Handys werden gefragt, ob sie Ende-zu-Ende neu verknüpfen wollen). Zuschauer und Gruppenmitglieder im Browser behalten die normale HTTPS-Verbindung zum Relay.
+- Unter der Haube: aufgeräumte Styles, Übersetzungen, die Icons überstehen, mit Prüfung auf Lücken, Releases mit einem Befehl (`release.ps1`), automatische Tests (`tests/`).
+
 ## Neu in 1.3.3: neues Desktop-Design
 - Die Desktop-App bekommt dieselbe ruhige Optik und die eigenen SlideLink-Icons wie das Handy.
 
