@@ -1,5 +1,4 @@
-// SlideLink · EN: Library (home screen on the PC): Presentations and Docs tabs, newest first, upload, folder status.
-// SlideLink · DE: Bibliothek (Startbildschirm am PC): Reiter Präsentationen und Docs, neueste zuerst, Upload, Ordnerstatus.
+// SlideLink: Library (home screen on the PC): Presentations and Docs tabs, newest first, upload, folder status.
 'use strict';
 /* SlideLink library: every presentation in one place (home screen of the desktop app). */
 
@@ -12,14 +11,11 @@ let libTab = localStorage.getItem('sl-lib-tab') || 'deck';   // 'deck' = present
 
 /* ---- shared by the library and the phone: two explorers, newest first, grouped by day ---- */
 // Docs: Claude Docs and everything that has only one slide (single pages, HTML apps, pictures)
-// EN: Which tab an item belongs to: 'doc' for Claude Docs and anything with one slide, else 'deck'.
-// DE: Zu welchem Reiter ein Eintrag gehört: 'doc' für Claude Docs und alles mit einer Folie, sonst 'deck'.
+// Which tab an item belongs to: 'doc' for Claude Docs and anything with one slide, else 'deck'.
 const deckKind = d => (d.kind === 'doc' || d.slide_count === 1 ? 'doc' : 'deck');
-// EN: Date used for sorting (claude.ai date, else created/updated).
-// DE: Datum für die Sortierung (claude.ai-Datum, sonst erstellt/geändert).
+// Date used for sorting (claude.ai date, else created/updated).
 const deckDate = d => d.date || d.created_at || d.updated_at || 0;
-// EN: Day heading: Today, Yesterday or the full date.
-// DE: Tagesüberschrift: Heute, Gestern oder das volle Datum.
+// Day heading: Today, Yesterday or the full date.
 function dayLabel(t) {
   const d = new Date(t * 1000), today = new Date();   // dates in the interface language
   const days = Math.round((new Date(today.toDateString()) - new Date(d.toDateString())) / 86400000);
@@ -27,8 +23,7 @@ function dayLabel(t) {
   if (days === 1) return 'Yesterday';
   return d.toLocaleDateString(I18N.locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
-// EN: Sorts newest first and groups by day.
-// DE: Sortiert neueste zuerst und gruppiert nach Tagen.
+// Sorts newest first and groups by day.
 function groupByDay(list) {
   const out = [];
   [...list].sort((a, b) => deckDate(b) - deckDate(a)).forEach(d => {
@@ -38,8 +33,7 @@ function groupByDay(list) {
   });
   return out;
 }
-// EN: The two tabs with their counts.
-// DE: Die beiden Reiter mit ihren Anzahlen.
+// The two tabs with their counts.
 function tabsHTML(decks, current, attr) {
   const n = k => decks.filter(d => deckKind(d) === k).length;
   return `<div class="lib-tabs" role="tablist">
@@ -47,12 +41,10 @@ function tabsHTML(decks, current, attr) {
     <button role="tab" ${attr}="doc" class="${current === 'doc' ? 'on' : ''}">${IC('doc')}<span>Docs</span> <small>${n('doc')}</small></button>
   </div>`;
 }
-// EN: 'Document' or 'n slides'.
-// DE: 'Document' oder 'n slides'.
+// 'Document' or 'n slides'.
 const countLabel = d => deckKind(d) === 'doc' ? 'Document' : plural(d.slide_count);
 
-// EN: Loads the list of all presentations.
-// DE: Lädt die Liste aller Präsentationen.
+// Loads the list of all presentations.
 async function loadLibrary() {
   if (libLoading) return libLoading;
   libLoading = fetch('/api/library', { headers: authHeaders(), cache: 'no-store' })
@@ -62,8 +54,7 @@ async function loadLibrary() {
     .finally(() => { libLoading = null; });
   return libLoading;
 }
-// EN: Loads one complete deck (cached).
-// DE: Lädt ein vollständiges Deck (zwischengespeichert).
+// Loads one complete deck (cached).
 async function loadDeck(id) {
   const summ = LIB && LIB.decks.find(d => d.id === id);
   const c = deckCache[id];
@@ -73,8 +64,7 @@ async function loadDeck(id) {
   return d;
 }
 
-// EN: Builds the library screen.
-// DE: Baut den Bibliotheksbildschirm.
+// Builds the library screen.
 function initLibrary() {
   document.title = 'SlideLink';
   $('#app').innerHTML = `
@@ -145,8 +135,7 @@ function initLibrary() {
 
 /* Upload: PowerPoint (converted by PowerPoint on the PC), claude.ai deck .zip, HTML deck, SlideLink .json,
    images (several images become one presentation). Also works by dragging files onto the window. */
-// EN: Uploads files (PowerPoint, zip, html, json, pictures), also by drag and drop.
-// DE: Lädt Dateien hoch (PowerPoint, zip, html, json, Bilder), auch per Drag-and-drop.
+// Uploads files (PowerPoint, zip, html, json, pictures), also by drag and drop.
 async function uploadFiles(fileList) {
   const files = [...fileList];
   if (!files.length) return;
@@ -174,8 +163,7 @@ async function uploadFiles(fileList) {
   if (last) selectDeck(last);
 }
 
-// EN: Shows one presentation (or the overview with null).
-// DE: Zeigt eine Präsentation (oder mit null die Übersicht).
+// Shows one presentation (or the overview with null).
 function selectDeck(id) {
   libSel = id;
   sessionStorage.setItem('sl-lib-sel', id || '');
@@ -183,10 +171,8 @@ function selectDeck(id) {
   renderLibrary();
 }
 
-// EN: Buttons on a presentation: present, edit, remote, duplicate, delete.
-// DE: Knöpfe einer Präsentation: präsentieren, bearbeiten, Fernbedienung, duplizieren, löschen.
-// EN: The ⋯ menu of a library tile: edit (title, speaker notes), duplicate, delete.
-// DE: Das ⋯-Menü einer Bibliothekskachel: bearbeiten (Titel, Sprechernotizen), duplizieren, löschen.
+// Buttons on a presentation: present, edit, remote, duplicate, delete.
+// The ⋯ menu of a library tile: edit (title, speaker notes), duplicate, delete.
 function openCardMenu(btn) {
   closeCardMenu();
   const id = btn.dataset.more, deck = LIB.decks.find(d => d.id === id);
@@ -222,8 +208,7 @@ function closeCardMenu() {
 document.addEventListener('click', e => { if (!e.target.closest('#cardMenu, [data-more]')) closeCardMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCardMenu(); });
 
-// EN: Edit window: the title and the speaker notes of every slide (the slides themselves stay as they are).
-// DE: Bearbeiten-Fenster: Titel und Sprechernotizen jeder Folie (die Folien selbst bleiben, wie sie sind).
+// Edit window: the title and the speaker notes of every slide (the slides themselves stay as they are).
 async function openEditDeck(id) {
   const d = await loadDeck(id);
   const back = document.createElement('div');
@@ -289,28 +274,23 @@ async function onLibMainClick(e) {
   }
 }
 
-// EN: Cover picture of a presentation (its first slide).
-// DE: Titelbild einer Präsentation (ihre erste Folie).
+// Cover picture of a presentation (its first slide).
 function coverHTML(d) {
   return d.cover ? slideHTML(d.cover, d, 0) : `<div class="slide theme-${esc(d.theme)}"><div class="inner"><p class="s-empty">Empty</p></div></div>`;
 }
-// EN: Progress bar of the slide statuses.
-// DE: Fortschrittsbalken der Folienstatus.
+// Progress bar of the slide statuses.
 function statusBar(counts, total) {
   if (!total) return '';
   const col = { 'done': 'var(--done)', 'review': 'var(--review)', 'in-progress': 'var(--progress)', 'draft': 'var(--draft)' };
   return `<div class="progress-track">${['done', 'review', 'in-progress', 'draft'].map(k =>
     `<div style="width:${100 * (counts[k] || 0) / total}%;background:${col[k]}"></div>`).join('')}</div>`;
 }
-// EN: '1 slide' / 'n slides'.
-// DE: '1 slide' / 'n slides'.
+// '1 slide' / 'n slides'.
 const plural = n => `${n} slide${n === 1 ? '' : 's'}`;
-// EN: 'From claude.ai' label.
-// DE: Kennzeichnung 'From claude.ai'.
+// 'From claude.ai' label.
 const sourceLabel = d => d.source && (d.source.kind === 'claude-slides' || d.source.kind === 'doc') ? 'From claude.ai' : '';
 
-// EN: Draws the list, the overview grid or the detail view.
-// DE: Zeichnet die Liste, das Übersichtsraster oder die Detailansicht.
+// Draws the list, the overview grid or the detail view.
 function renderLibrary() {
   if (MODE !== 'library' || !$('#libList')) return;
   renderClaudeBar();

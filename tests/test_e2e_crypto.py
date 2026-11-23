@@ -1,5 +1,4 @@
-# SlideLink · EN: Tests for e2e.py: official test vectors, round trips, tampering. Run: python -m unittest discover tests
-# SlideLink · DE: Tests für e2e.py: offizielle Testvektoren, Hin-und-zurück, Manipulation.
+# SlideLink: Tests for e2e.py: official test vectors, round trips, tampering. Run: python -m unittest discover tests
 import os
 import sys
 import tempfile

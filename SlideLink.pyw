@@ -1,5 +1,4 @@
-# SlideLink · EN: SlideLink desktop app for Windows: tray icon, app and presenter windows, single instance, autostart.
-# SlideLink · DE: SlideLink-Desktop-App für Windows: Tray-Symbol, App- und Präsentationsfenster, nur eine Instanz, Autostart.
+# SlideLink desktop app for Windows: tray icon, app and presenter windows, single instance, autostart.
 """SlideLink desktop app (Windows).
 
 Runs the SlideLink server in the background with a tray icon - like Steam - and opens
@@ -36,8 +35,7 @@ if sys.stdout is None or not sys.stdout.isatty():
     print(f"\n--- SlideLink start {time.strftime('%Y-%m-%d %H:%M:%S')} ---")
 
 
-# EN: True if a SlideLink server already answers on this PC.
-# DE: True, wenn auf diesem PC schon ein SlideLink-Server antwortet.
+# True if a SlideLink server already answers on this PC.
 def server_running():
     try:
         with socket.create_connection(("127.0.0.1", PORT), timeout=0.5):
@@ -46,8 +44,7 @@ def server_running():
         return False
 
 
-# EN: Path of Chrome or Edge (for clean app windows without tabs).
-# DE: Pfad von Chrome oder Edge (für saubere App-Fenster ohne Tabs).
+# Path of Chrome or Edge (for clean app windows without tabs).
 def find_browser():
     """Chrome or Edge, for a clean app window (own taskbar icon, no tabs or address bar)."""
     import winreg
@@ -72,15 +69,13 @@ def find_browser():
 _procs = {}          # "main" / "present" -> the browser process we started for that window
 
 
-# EN: Visible top-level windows of a process.
-# DE: Sichtbare Hauptfenster eines Prozesses.
+# Visible top-level windows of a process.
 def _windows_of(pid):
     """Visible top-level windows of a process."""
     found = []
     proc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
 
-    # EN: EnumWindows callback: collects the windows of the wanted process.
-    # DE: EnumWindows-Rückruf: sammelt die Fenster des gesuchten Prozesses.
+    # EnumWindows callback: collects the windows of the wanted process.
     def cb(hwnd, _):
         p = ctypes.c_ulong()
         ctypes.windll.user32.GetWindowThreadProcessId(ctypes.c_void_p(hwnd), ctypes.byref(p))
@@ -92,8 +87,7 @@ def _windows_of(pid):
     return found
 
 
-# EN: Brings a window to the front (restores it only if minimized).
-# DE: Holt ein Fenster nach vorne (stellt es nur wieder her, wenn es minimiert ist).
+# Brings a window to the front (restores it only if minimized).
 def _to_front(hwnd):
     u = ctypes.windll.user32
     if u.IsIconic(ctypes.c_void_p(hwnd)):
@@ -102,15 +96,13 @@ def _to_front(hwnd):
     u.SetForegroundWindow(ctypes.c_void_p(hwnd))
 
 
-# EN: True for presentation windows (title '<slide>/<count> · ...').
-# DE: True für Präsentationsfenster (Titel '<Folie>/<Anzahl> · ...').
+# True for presentation windows (title '<slide>/<count> · ...').
 def _is_presenter_title(t):
     import re
     return bool(re.match(r"^\d+/\d+ · ", t))
 
 
-# EN: Brings an already open SlideLink window to the front; False if there is none.
-# DE: Holt ein schon offenes SlideLink-Fenster nach vorne; False, wenn keines offen ist.
+# Brings an already open SlideLink window to the front; False if there is none.
 def _focus_existing(name):
     p = _procs.get(name)
     if p and p.poll() is None:
@@ -131,8 +123,7 @@ def _focus_existing(name):
     return False
 
 
-# EN: Waits for a new window, brings it to the front and maximizes it if wanted.
-# DE: Wartet auf ein neues Fenster, holt es nach vorne und maximiert es auf Wunsch.
+# Waits for a new window, brings it to the front and maximizes it if wanted.
 def _set_window_icon(hwnd):
     """Window + taskbar icon straight from icon.ico (Windows picks the exact size for the display scaling).
     Without this the browser window shows a scaled-up page icon, which looks blurry in the taskbar."""
@@ -216,8 +207,7 @@ def _front_when_ready(p, maximize=False):
             return
 
 
-# EN: Opens (or focuses) the SlideLink app window; fullscreen=True means maximized with border.
-# DE: Öffnet (oder fokussiert) das SlideLink-App-Fenster; fullscreen=True heißt maximiert mit Rahmen.
+# Opens (or focuses) the SlideLink app window; fullscreen=True means maximized with border.
 def open_window(path="/", fullscreen=False):
     """The SlideLink app window (library/editor). fullscreen=True: maximized window with title bar and border."""
     exe = find_browser()
@@ -233,8 +223,7 @@ def open_window(path="/", fullscreen=False):
     threading.Thread(target=_front_when_ready, args=(p, fullscreen), daemon=True).start()
 
 
-# EN: Browser processes that use SlideLink's own window profiles.
-# DE: Browser-Prozesse, die SlideLinks eigene Fensterprofile nutzen.
+# Browser processes that use SlideLink's own window profiles.
 def _profile_browser_pids():
     """Browser processes that run SlideLink's own window profiles (also ones from an earlier run)."""
     ps = ("Get-CimInstance Win32_Process -Filter \"Name='chrome.exe' OR Name='msedge.exe'\" | "
@@ -245,8 +234,7 @@ def _profile_browser_pids():
     return {int(x) for x in r.stdout.split() if x.isdigit()}
 
 
-# EN: Closes the presentation window(s) on the PC (the app window stays).
-# DE: Schließt das/die Präsentationsfenster auf dem PC (das App-Fenster bleibt).
+# Closes the presentation window(s) on the PC (the app window stays).
 def close_windows():
     """'Close window on PC' on the phone: closes the presentation window(s) on the PC.
     SlideLink itself keeps running in the tray, so the phone stays connected and can open them again."""
@@ -262,8 +250,7 @@ def close_windows():
     _procs.pop("present", None)
 
 
-# EN: Opens the presentation borderless in fullscreen (kiosk), or brings it to the front.
-# DE: Öffnet die Präsentation randlos im Vollbild (Kiosk) oder holt sie nach vorne.
+# Opens the presentation borderless in fullscreen (kiosk), or brings it to the front.
 def show_presenter():
     """'Show on PC': the presentation borderless in fullscreen (kiosk window; Alt+F4 closes it).
     If it is already open, it is brought to the front instead of opening a second one."""
@@ -287,14 +274,12 @@ def show_presenter():
     threading.Thread(target=_front_when_ready, args=(p,), daemon=True).start()
 
 
-# EN: True if 'Start with Windows' is on.
-# DE: True, wenn 'Mit Windows starten' an ist.
+# True if 'Start with Windows' is on.
 def startup_enabled():
     return os.path.exists(STARTUP_LNK)
 
 
-# EN: Switches 'Start with Windows' on or off (shortcut in the Startup folder).
-# DE: Schaltet 'Mit Windows starten' an oder aus (Verknüpfung im Autostart-Ordner).
+# Switches 'Start with Windows' on or off (shortcut in the Startup folder).
 def set_startup(on):
     if not on:
         try:
@@ -318,8 +303,7 @@ LRESULT = ctypes.c_ssize_t
 WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wt.HWND, wt.UINT, wt.WPARAM, wt.LPARAM)
 
 
-# EN: Win32 window class structure (for the hidden tray window).
-# DE: Win32-Fensterklassen-Struktur (für das versteckte Tray-Fenster).
+# Win32 window class structure (for the hidden tray window).
 class WNDCLASSEXW(ctypes.Structure):
     _fields_ = [("cbSize", wt.UINT), ("style", wt.UINT), ("lpfnWndProc", WNDPROC), ("cbClsExtra", ctypes.c_int),
                 ("cbWndExtra", ctypes.c_int), ("hInstance", wt.HINSTANCE), ("hIcon", wt.HICON),
@@ -327,15 +311,13 @@ class WNDCLASSEXW(ctypes.Structure):
                 ("lpszClassName", wt.LPCWSTR), ("hIconSm", wt.HICON)]
 
 
-# EN: Win32 GUID structure.
-# DE: Win32-GUID-Struktur.
+# Win32 GUID structure.
 class GUID(ctypes.Structure):
     _fields_ = [("Data1", ctypes.c_ulong), ("Data2", ctypes.c_ushort), ("Data3", ctypes.c_ushort),
                 ("Data4", ctypes.c_ubyte * 8)]
 
 
-# EN: Win32 tray icon data structure.
-# DE: Win32-Struktur für Tray-Symbol-Daten.
+# Win32 tray icon data structure.
 class NOTIFYICONDATAW(ctypes.Structure):
     _fields_ = [("cbSize", wt.DWORD), ("hWnd", wt.HWND), ("uID", wt.UINT), ("uFlags", wt.UINT),
                 ("uCallbackMessage", wt.UINT), ("hIcon", wt.HICON), ("szTip", wt.WCHAR * 128),
@@ -384,11 +366,9 @@ IMAGE_ICON, LR_LOADFROMFILE, LR_DEFAULTSIZE = 1, 0x10, 0x40
 CMD_OPEN, CMD_PRESENT, CMD_DEVICES, CMD_STARTUP, CMD_FOLDER, CMD_QUIT = range(1, 7)
 
 
-# EN: The tray icon with its menu, written with ctypes (no extra packages).
-# DE: Das Tray-Symbol mit Menü, geschrieben mit ctypes (keine Zusatzpakete).
+# The tray icon with its menu, written with ctypes (no extra packages).
 class Tray:
-    # EN: Creates the hidden window and adds the tray icon.
-    # DE: Erstellt das versteckte Fenster und fügt das Tray-Symbol hinzu.
+    # Creates the hidden window and adds the tray icon.
     def __init__(self, on_quit):
         self.on_quit = on_quit
         self.taskbar_created = user32.RegisterWindowMessageW("TaskbarCreated")  # before any window message arrives
@@ -406,8 +386,7 @@ class Tray:
         self.nid.szTip = "SlideLink – running"
         shell32.Shell_NotifyIconW(NIM_ADD, ctypes.byref(self.nid))
 
-    # EN: Shows a Windows notification balloon.
-    # DE: Zeigt eine Windows-Benachrichtigung.
+    # Shows a Windows notification balloon.
     def notify(self, title, text):
         self.nid.uFlags = NIF_INFO
         self.nid.szInfoTitle = title[:63]
@@ -415,8 +394,7 @@ class Tray:
         shell32.Shell_NotifyIconW(NIM_MODIFY, ctypes.byref(self.nid))
         self.nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP
 
-    # EN: Shows the right-click menu.
-    # DE: Zeigt das Rechtsklick-Menü.
+    # Shows the right-click menu.
     def menu(self):
         m = user32.CreatePopupMenu()
         user32.AppendMenuW(m, MF_STRING, CMD_OPEN, "Open SlideLink")
@@ -435,8 +413,7 @@ class Tray:
         user32.DestroyMenu(m)
         self.command(cmd)
 
-    # EN: Runs the chosen menu entry.
-    # DE: Führt den gewählten Menüeintrag aus.
+    # Runs the chosen menu entry.
     def command(self, cmd):
         if cmd == CMD_OPEN:
             open_window("/")
@@ -451,8 +428,7 @@ class Tray:
         elif cmd == CMD_QUIT:
             user32.PostMessageW(self.hwnd, WM_CLOSE, 0, 0)
 
-    # EN: Window procedure: clicks on the icon, menu, quit, Explorer restarts.
-    # DE: Fensterprozedur: Klicks auf das Symbol, Menü, Beenden, Explorer-Neustarts.
+    # Window procedure: clicks on the icon, menu, quit, Explorer restarts.
     def _wndproc(self, hwnd, msg, wparam, lparam):
         if msg == WM_TRAY:
             if lparam in (WM_LBUTTONUP, WM_LBUTTONDBLCLK):
@@ -473,8 +449,7 @@ class Tray:
             return 0
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
-    # EN: Windows message loop (runs until quit).
-    # DE: Windows-Nachrichtenschleife (läuft bis zum Beenden).
+    # Windows message loop (runs until quit).
     def loop(self):
         msg = wt.MSG()
         while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
@@ -482,8 +457,7 @@ class Tray:
             user32.DispatchMessageW(ctypes.byref(msg))
 
 
-# EN: SlideLink already runs: ask it to show its window, then this second start quits.
-# DE: SlideLink läuft schon: Es soll sein Fenster zeigen, dann beendet sich dieser zweite Start.
+# SlideLink already runs: ask it to show its window, then this second start quits.
 def _ask_running_instance_to_show():
     """SlideLink is already running: ask it to bring its window forward (or open it), then quit."""
     import json
@@ -496,8 +470,7 @@ def _ask_running_instance_to_show():
         print("could not reach the running SlideLink:", e)
 
 
-# EN: Starts SlideLink: single-instance check, server, folder watcher, tray icon and window.
-# DE: Startet SlideLink: Einzelinstanz-Prüfung, Server, Ordnerüberwachung, Tray-Symbol und Fenster.
+# Starts SlideLink: single-instance check, server, folder watcher, tray icon and window.
 def main():
     background = "--background" in sys.argv
     # only one SlideLink: a second start just shows the window of the first one

@@ -10,10 +10,8 @@ import java.security.Signature;
 import java.security.spec.ECGenParameterSpec;
 
 /**
- * EN: This phone's end-to-end identity key, kept in the Android Keystore (hardware-backed where the phone has it).
+ * This phone's end-to-end identity key, kept in the Android Keystore (hardware-backed where the phone has it).
  *     The private part never leaves the Keystore; the app only asks it to sign.
- * DE: Der Ende-zu-Ende-Identitätsschlüssel dieses Handys, im Android-Keystore (wo möglich hardwaregeschützt).
- *     Der private Teil verlässt den Keystore nie; die App lässt nur unterschreiben.
  */
 final class E2eKeys implements E2e.Signer {
     private static final String ALIAS = "slidelink_e2e_identity";

@@ -37,11 +37,9 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * EN: End-to-end encryption between this app and the PC through the (untrusted) relay. Same protocol as the PC's
+ * End-to-end encryption between this app and the PC through the (untrusted) relay. Same protocol as the PC's
  *     e2e_server.py (pairing with a 6-digit number check) and e2e_session.py (encrypted requests and streams).
  *     Plain Java (no Android classes), so it is tested against the real PC on a computer as well.
- * DE: Ende-zu-Ende-Verschlüsselung zwischen dieser App und dem PC über das (nicht vertrauenswürdige) Relay.
- *     Dasselbe Protokoll wie e2e_server.py / e2e_session.py am PC. Reines Java, daher auch am Computer gegen den PC getestet.
  */
 final class E2e {
     /** The phone's long-lived identity key (Android: in the Keystore, never leaves it). */

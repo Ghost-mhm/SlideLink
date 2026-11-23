@@ -1,6 +1,5 @@
-// SlideLink · EN: Cross-check of e2e.py against Java's crypto (the same APIs Android uses). Driven by tests/test_e2e_interop.py.
+// SlideLink: Cross-check of e2e.py against Java's crypto (the same APIs Android uses). Driven by tests/test_e2e_interop.py.
 //   stdin:  lines "key value" (hex) from Python;  stdout: lines "key value" (hex) for Python.
-// SlideLink · DE: Gegenprüfung von e2e.py mit Javas Krypto (dieselben Schnittstellen wie Android).
 import java.math.BigInteger;
 import java.security.*;
 import java.security.interfaces.*;

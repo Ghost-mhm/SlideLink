@@ -1,6 +1,5 @@
-# SlideLink · EN: End-to-end crypto between phone app and PC, on the crypto built into Windows (CNG, bcrypt.dll) - no extra packages.
+# SlideLink: End-to-end crypto between phone app and PC, on the crypto built into Windows (CNG, bcrypt.dll) - no extra packages.
 #             ECDH P-256 (key exchange), ECDSA P-256 (PC/phone identity), HKDF-SHA256, AES-256-GCM. Same building blocks as Android's.
-# SlideLink · DE: Ende-zu-Ende-Krypto zwischen Handy-App und PC, mit der in Windows eingebauten Krypto (CNG) - ohne Zusatzpakete.
 import ctypes
 import hashlib
 import hmac
@@ -14,9 +13,7 @@ _crypt32 = ctypes.WinDLL("crypt32.dll")
 _kernel32 = ctypes.WinDLL("kernel32.dll")
 
 ECDH_PUBLIC_P256 = 0x314B4345      # 'ECK1'
-ECDH_PRIVATE_P256 = 0x324B4345     # 'ECK2'
 ECDSA_PUBLIC_P256 = 0x31534345     # 'ECS1'
-ECDSA_PRIVATE_P256 = 0x32534345    # 'ECS2'
 
 
 class CryptoError(Exception):

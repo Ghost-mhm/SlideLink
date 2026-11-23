@@ -1,5 +1,4 @@
-# SlideLink · EN: Writes a claude.ai Doc (PDF export) into Claude Presentations/Docs.
-# SlideLink · DE: Schreibt ein claude.ai-Doc (PDF-Export) nach Claude Presentations/Docs.
+# SlideLink: Writes a claude.ai Doc (PDF export) into Claude Presentations/Docs.
 """Save a claude.ai Doc (PDF export) into ~/Claude Presentations/Docs so SlideLink shows it under Docs.
 
 Usage:
@@ -21,8 +20,7 @@ DOCS = os.path.join(ROOT, "Docs")
 STATE = os.path.join(ROOT, ".pull-state.json")
 
 
-# EN: Decodes the PDF from the export result, saves it with its date and records the version.
-# DE: Dekodiert das PDF aus dem Export-Ergebnis, speichert es mit Datum und merkt sich die Version.
+# Decodes the PDF from the export result, saves it with its date and records the version.
 def main(result_file, slug, version, date, title, tab=""):
     with open(result_file, encoding="utf-8") as f:
         j = json.load(f)

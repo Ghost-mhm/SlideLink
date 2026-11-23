@@ -1,5 +1,4 @@
-# SlideLink · EN: Command-line import of a claude.ai deck folder into a running SlideLink.
-# SlideLink · DE: Kommandozeilen-Import eines claude.ai-Deck-Ordners in ein laufendes SlideLink.
+# SlideLink: Command-line import of a claude.ai deck folder into a running SlideLink.
 """Import a claude.ai "Slides" deck folder into SlideLink.
 
 A deck folder looks like the deck's project files:
@@ -21,14 +20,12 @@ import urllib.request
 BASE = os.environ.get("SLIDELINK_URL", "http://localhost:8765").rstrip("/")
 
 
-# EN: Plain text of an HTML fragment.
-# DE: Reiner Text eines HTML-Stücks.
+# Plain text of an HTML fragment.
 def text_of(fragment):
     return " ".join(html.unescape(re.sub(r"<[^>]+>", " ", fragment)).split())
 
 
-# EN: Reads one slide file: HTML, title and notes.
-# DE: Liest eine Foliendatei: HTML, Titel und Notizen.
+# Reads one slide file: HTML, title and notes.
 def parse_slide(src):
     notes = ""
     m = re.search(r"<aside[^>]*>([\s\S]*?)</aside>", src, re.I)
@@ -44,8 +41,7 @@ def parse_slide(src):
     return src.strip(), notes, title
 
 
-# EN: Reads a whole deck folder.
-# DE: Liest einen ganzen Deck-Ordner.
+# Reads a whole deck folder.
 def load_folder(folder):
     with open(os.path.join(folder, "deck.json"), encoding="utf-8") as f:
         index = json.load(f)
@@ -76,8 +72,7 @@ def load_folder(folder):
             "faces": faces, "slides": slides, "source": source, "by": "claude.ai import"}
 
 
-# EN: Sends the deck to SlideLink's import API.
-# DE: Schickt das Deck an die Import-API von SlideLink.
+# Sends the deck to SlideLink's import API.
 def post(payload):
     req = urllib.request.Request(BASE + "/api/op", data=json.dumps(payload).encode("utf-8"), method="POST",
                                  headers={"Content-Type": "application/json"})

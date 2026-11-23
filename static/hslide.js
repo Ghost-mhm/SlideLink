@@ -1,5 +1,4 @@
-// SlideLink · EN: Renders claude.ai designed slides: sandboxed frame per slide, scaling, shapes, icons, embeds, click builds, doc view.
-// SlideLink · DE: Rendert gestaltete claude.ai-Folien: abgeschotteter Frame pro Folie, Skalierung, Formen, Symbole, Einbettungen, Klick-Builds, Doc-Ansicht.
+// SlideLink: Renders claude.ai designed slides: sandboxed frame per slide, scaling, shapes, icons, embeds, click builds, doc view.
 'use strict';
 /* Renders Claude "Slides" HTML (one <section> on a 1920x1080 canvas) inside a sandboxed,
    scaled iframe, so imported claude.ai decks look exactly as designed. */
@@ -76,8 +75,7 @@ document.querySelectorAll('x-embed').forEach(el => {
   f.style.cssText = 'border:0;width:100%;height:100%;background:transparent';
   el.innerHTML = ''; el.appendChild(f);
 });
-// EN: Inside the slide frame: the build order number of an element.
-// DE: Im Folien-Frame: die Build-Reihenfolge eines Elements.
+// Inside the slide frame: the build order number of an element.
 const num = (v, total) => { v = String(v || '0').trim(); return v.endsWith('%') ? parseFloat(v) / 100 * total : parseFloat(v) || 0; };
 document.querySelectorAll('x-connector').forEach(el => {
   const host = el.parentElement, W = host.clientWidth || 1920, H = host.clientHeight || 1080;
@@ -120,8 +118,7 @@ items.forEach(it => {
 });
 document.querySelectorAll('.fragment').forEach(f => groups.push([{ el: f, kind: 'frag' }]));
 const FX = { fade: [0, 0, 1], rise: [0, 48, 1], drop: [0, -48, 1], left: [-80, 0, 1], right: [80, 0, 1], scale: [0, 0, 0.6], pop: [0, 0, 0.3] };
-// EN: Inside the slide frame: shows or hides an element for a build step (with animation).
-// DE: Im Folien-Frame: zeigt oder versteckt ein Element für einen Build-Schritt (mit Animation).
+// Inside the slide frame: shows or hides an element for a build step (with animation).
 function look(it, on, delay, animate) {
   const s = it.el.style;
   if (it.kind === 'frag') { it.el.classList.toggle('visible', on); return; }
@@ -133,8 +130,7 @@ function look(it, on, delay, animate) {
   s.scale = show ? '' : String(f[2]);
 }
 let cur = -1;
-// EN: Inside the slide frame: shows exactly the builds up to a step.
-// DE: Im Folien-Frame: zeigt genau die Builds bis zu einem Schritt.
+// Inside the slide frame: shows exactly the builds up to a step.
 function setStep(step, animate) {
   step = Math.max(0, Math.min(step, groups.length - 1));
   groups.forEach((g, gi) => {
@@ -143,8 +139,7 @@ function setStep(step, animate) {
   });
   cur = step;
 }
-// EN: Inside the slide frame: plays the entrance animations of a slide.
-// DE: Im Folien-Frame: spielt die Eingangsanimationen einer Folie ab.
+// Inside the slide frame: plays the entrance animations of a slide.
 function enter(step) {   // slide comes on screen: replay its entrance animations from the start
   document.getAnimations().forEach(a => { try { a.currentTime = 0; a.play(); } catch (_) {} });
   document.querySelectorAll('x-embed iframe').forEach(f => { const d = f.srcdoc; f.srcdoc = ''; f.srcdoc = d; });
@@ -221,12 +216,10 @@ const HS_LOW_SHIM = `(function(){
       if (cs.animationName !== 'none' && cs.animationIterationCount.indexOf('infinite') >= 0) all[i].style.animationPlayState = 'paused'; } }
   addEventListener('load', function(){ setTimeout(pauseLoops, 1200); setInterval(pauseLoops, 4000); });
 })();`;
-// EN: Phone preview: script that lowers animations to about 12 fps (battery).
-// DE: Handy-Vorschau: Skript, das Animationen auf etwa 12 fps senkt (Akku).
+// Phone preview: script that lowers animations to about 12 fps (battery).
 const hsLowTag = () => (HS_LOWPOWER ? '<script id="hs-low">' + HS_LOW_SHIM + '<\/script>' : '');
 
-// EN: The complete HTML document for a slide's frame (fonts, CSS, slide, player).
-// DE: Das vollständige HTML-Dokument für den Frame einer Folie (Schriften, CSS, Folie, Player).
+// The complete HTML document for a slide's frame (fonts, CSS, slide, player).
 function hsDoc(s, deck, index, live) {
   if (s.layout === 'page') {
     const doc = String(s.html || '');
@@ -252,24 +245,21 @@ function hsDoc(s, deck, index, live) {
     `<body style="counter-reset:page ${index | 0}">${html}<script>${HS_POLY}<\/script></body></html>`;
 }
 
-// EN: A sandboxed iframe that shows one slide.
-// DE: Ein abgeschotteter iframe, der eine Folie zeigt.
+// A sandboxed iframe that shows one slide.
 function hsFrame(s, deck, index, live) {
   return `<div class="slide hslide${s.layout === 'page' ? ' page' : ''}"><iframe sandbox="allow-scripts allow-forms" tabindex="-1"${live ? '' : ' loading="lazy"'} title="${esc(s.title || 'Slide')}" srcdoc="${esc(hsDoc(s, deck, index, live))}"></iframe></div>`;
 }
 
 /* A document (claude.ai Doc as page pictures): shown directly, not in a sandboxed frame (Chrome blocks such
    frames from loading anything from this PC). Only the page pictures are taken over, nothing else. */
-// EN: Document view: the page pictures of a doc, outside any frame.
-// DE: Dokumentansicht: die Seitenbilder eines Docs, außerhalb jedes Frames.
+// Document view: the page pictures of a doc, outside any frame.
 function hsDocView(s) {
   const pages = [...String(s.html || '').matchAll(/src="(\/media\/[0-9a-f]{24}\/page-\d{3}\.png)"/g)].map(m => m[1]);
   return `<div class="slide docview"><div class="docscroll">${pages.map((p, i) =>
     `<img src="${p}" alt="Page ${i + 1}" loading="${i < 2 ? 'eager' : 'lazy'}" draggable="false">`).join('')}</div></div>`;
 }
 /* Next/Back on a document: scroll one screen per step */
-// EN: Next/Back on a document: scrolls one screen.
-// DE: Weiter/Zurück in einem Dokument: scrollt einen Bildschirm.
+// Next/Back on a document: scrolls one screen.
 function hsDocStep(el) {
   const ds = el.querySelector('.docscroll');
   if (!ds || el._sent === el._step) return;
@@ -279,8 +269,7 @@ function hsDocStep(el) {
 }
 
 /* Same click counting as the server and the iframe player. */
-// EN: Number of click steps of a slide (same rules as the server).
-// DE: Anzahl der Klick-Schritte einer Folie (gleiche Regeln wie der Server).
+// Number of click steps of a slide (same rules as the server).
 function hsSteps(s) {
   if (s && (s.layout === 'page' || s.layout === 'doc')) return 10000;
   if (!s || s.layout !== 'html' || !s.html) return 0;
@@ -301,20 +290,7 @@ function hsSteps(s) {
 const hsObserver = new ResizeObserver(entries => {
   for (const e of entries) e.target.style.setProperty('--k', (e.contentRect.width / 1920).toFixed(5));
 });
-// EN: Scales every slide frame inside an element to its size.
-// DE: Skaliert jeden Folien-Frame in einem Element auf dessen Größe.
+// Scales every slide frame inside an element to its size.
 function hsObserve(root) {
   (root || document).querySelectorAll('.hslide:not([data-ro])').forEach(el => { el.dataset.ro = '1'; hsObserver.observe(el); });
-}
-
-/* Pull speaker notes and a title out of a claude.ai slide file. */
-// EN: Splits a claude.ai slide file into section HTML, title and notes.
-// DE: Zerlegt eine claude.ai-Foliendatei in Section-HTML, Titel und Notizen.
-function hsParse(html) {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  const aside = doc.querySelector('section > aside, aside');
-  const notes = aside ? aside.textContent.trim() : '';
-  const h = doc.querySelector('h1, h2, h3');
-  const title = (h ? h.textContent : (doc.querySelector('p') || {}).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
-  return { notes, title, hidden: !!doc.querySelector('section[hidden]') };
 }

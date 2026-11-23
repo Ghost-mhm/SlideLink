@@ -1,5 +1,4 @@
-# SlideLink · EN: Creates this PC's own HTTPS certificate for the home Wi-Fi (cert.pem + key.pem). The phone app trusts exactly this one.
-# SlideLink · DE: Erzeugt das eigene HTTPS-Zertifikat dieses PCs fürs Heim-WLAN (cert.pem + key.pem). Die Handy-App vertraut genau diesem.
+# SlideLink: Creates this PC's own HTTPS certificate for the home Wi-Fi (cert.pem + key.pem). The phone app trusts exactly this one.
 # Usage: powershell -File make_cert.ps1 -Out <folder>
 param([Parameter(Mandatory = $true)][string]$Out)
 $ErrorActionPreference = 'Stop'

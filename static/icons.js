@@ -1,5 +1,4 @@
-// SlideLink · EN: SlideLink's own line icons (24x24, drawn in the current text colour), shared by PC and phone.
-// SlideLink · DE: SlideLinks eigene Linien-Icons (24x24, in der aktuellen Textfarbe), gemeinsam für PC und Handy.
+// SlideLink: SlideLink's own line icons (24x24, drawn in the current text colour), shared by PC and phone.
 const IC = (() => {
   const d = {
     slides: '<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>',

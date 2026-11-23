@@ -1,5 +1,4 @@
-// SlideLink · EN: Audience page logic: follows the presentation live (read only) and lets viewers vote in polls.
-// SlideLink · DE: Logik der Publikumsseite: folgt der Präsentation live (nur lesen) und lässt Zuschauer abstimmen.
+// SlideLink: Audience page logic: follows the presentation live (read only) and lets viewers vote in polls.
 'use strict';
 const KEY = new URLSearchParams(location.search).get('k') || '';
 const CLIENT = Math.random().toString(36).slice(2, 10);
@@ -10,13 +9,11 @@ const VOTER = localStorage.getItem('sl-voter') || (() => {   // one anonymous id
 HS_LOWPOWER = true;                                          // viewers' phones: animations at ~12 fps (battery)
 let S = null, es = null, fails = 0, shownKey = null, frameReady = false;
 
-// EN: Escapes text for HTML (hslide.js needs this helper).
-// DE: Maskiert Text für HTML (hslide.js braucht diese Hilfsfunktion).
+// Escapes text for HTML (hslide.js needs this helper).
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 const $ = s => document.querySelector(s);
 
-// EN: Live connection: every message is the reduced public state.
-// DE: Live-Verbindung: jede Nachricht ist der reduzierte öffentliche Zustand.
+// Live connection: every message is the reduced public state.
 function connect() {
   if (es) es.close();
   es = new EventSource(`/events?role=audience&k=${encodeURIComponent(KEY)}&client=${CLIENT}`);
@@ -28,12 +25,10 @@ function connect() {
   };
 }
 
-// EN: Shows a full message instead of the presentation.
-// DE: Zeigt eine Meldung statt der Präsentation.
+// Shows a full message instead of the presentation.
 function message(text) { $('#lv').innerHTML = `<div class="lv-msg">${esc(text)}</div>`; shownKey = null; }
 
-// EN: Builds the page once, then only updates what changed.
-// DE: Baut die Seite einmal und aktualisiert dann nur, was sich ändert.
+// Builds the page once, then only updates what changed.
 function render() {
   if (!$('#stage')) {
     $('#lv').innerHTML = `
@@ -80,8 +75,7 @@ window.addEventListener('message', e => {
   f.contentWindow.postMessage({ sl: 'step', step: (S && S.present.step) || 0, animate: false }, '*');
 });
 
-// EN: The poll card: answer buttons while open; results after voting, when shown or when closed.
-// DE: Die Umfragekarte: Antwortknöpfe, solange offen; Ergebnisse nach dem Abstimmen, wenn gezeigt oder wenn beendet.
+// The poll card: answer buttons while open; results after voting, when shown or when closed.
 function renderPoll() {
   const box = $('#poll'), p = S.poll;
   if (!p) { box.innerHTML = ''; return; }

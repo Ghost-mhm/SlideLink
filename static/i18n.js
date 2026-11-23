@@ -1,5 +1,4 @@
-// SlideLink · EN: Interface languages. The admin picks the language on the PC; every screen follows it (guests may override it for themselves).
-// SlideLink · DE: Oberflächensprachen. Der Admin wählt die Sprache am PC; jeder Bildschirm folgt ihr (Gäste können sie für sich ändern).
+// SlideLink: Interface languages. The admin picks the language on the PC; every screen follows it (guests may override it for themselves).
 'use strict';
 /* How it works: the interface is written in English. This layer translates every visible text (text nodes, placeholders,
    titles, alerts, confirms) as it appears, so no template needs changing. User content (presentation titles, notes,
@@ -12,17 +11,17 @@ const I18N_DICT = { de: {
   // library, editor, presenter
   'Library': 'Bibliothek', 'end-to-end via Relay': 'Ende-zu-Ende über das Relay', 'Link end-to-end encrypted?': 'Ende-zu-Ende-verschlüsselt verknüpfen?', 'Does the phone show this number?': 'Zeigt das Handy diese Zahl?', 'Yes, same number': 'Ja, gleiche Zahl', 'No, different': 'Nein, andere Zahl', 'Only confirm if the numbers are exactly the same.': 'Nur bestätigen, wenn die Zahlen genau gleich sind.', 'end-to-end': 'Ende-zu-Ende', 'End-to-end encrypted': 'Ende-zu-Ende-verschlüsselt', 'The numbers are different? Then someone may be in between. The pairing is cancelled and the code stops working.': 'Die Zahlen sind verschieden? Dann könnte jemand dazwischen sein. Das Verknüpfen wird abgebrochen und der Code ungültig.', 'Android app:': 'Android-App:', 'open': 'öffne', 'on the phone, install it, then enter this code in the app.': 'auf dem Handy, installiere sie und gib dann diesen Code in der App ein.', 'All presentations': 'Alle Präsentationen', 'Presentation title': 'Präsentationstitel', 'Theme': 'Design', 'Move up': 'Nach oben', 'Move down': 'Nach unten', 'Me now': 'Jetzt ich', 'Loading…': 'Lädt…', 'bullet ·': 'Aufzählung ·', 'sub-bullet ·': 'Unterpunkt ·', 'heading ·': 'Überschrift ·', 'quote ·': 'Zitat ·', 'image ·': 'Bild ·', 'next column': 'nächste Spalte', 'Layout': 'Layout', 'Status': 'Status', 'Editor': 'Editor', 'LIVE': 'LIVE', 'SlideLink Relay': 'SlideLink-Relay', 'Library home': 'Bibliothek', 'Edit': 'Bearbeiten', 'Remote': 'Fernbedienung', 'Present': 'Präsentieren', 'Group & audience': 'Gruppe & Publikum', 'Claude Presentations': 'Claude Presentations', 'Add presentation': 'Präsentation hinzufügen', 'Search': 'Suchen', 'Presentations': 'Präsentationen',
   'Docs': 'Docs', 'Today': 'Heute', 'Yesterday': 'Gestern',
-  '＋ New presentation': '＋ Neue Präsentation', '⬆ Upload presentation': '⬆ Präsentation hochladen',
+'⬆ Upload presentation': '⬆ Präsentation hochladen',
   
   '▶ PRESENT': '▶ PRÄSENTIEREN', 
   'Duplicate': 'Duplizieren', 'Delete': 'Löschen',
   'Slides': 'Folien', 'Loading slides…': 'Folien werden geladen…', 'Loading your presentations…': 'Deine Präsentationen werden geladen…',
   'No matches': 'Keine Treffer', 'No presentations yet': 'Noch keine Präsentationen', 'Nothing here yet.': 'Hier ist noch nichts.',
-  'No docs yet. Docs saved in “Claude Presentations\\Docs” appear here.': 'Noch keine Docs. Docs, die in „Claude Presentations\\Docs“ gespeichert werden, erscheinen hier.',
+
   'Document': 'Dokument', 'From claude.ai': 'Von claude.ai', 'OPEN': 'OFFEN', '● open': '● offen',
   '● open on all devices': '● auf allen Geräten offen', 'Empty': 'Leer', 'Untitled presentation': 'Unbenannte Präsentation',
-  'Name of the new presentation': 'Name der neuen Präsentation', 'Nothing imported': 'Nichts importiert',
-  'Present this slide': 'Ab dieser Folie präsentieren', 'Present from this slide': 'Ab dieser Folie präsentieren',
+'Nothing imported': 'Nichts importiert',
+'Present from this slide': 'Ab dieser Folie präsentieren',
   '+ Add slide': '+ Folie hinzufügen', 'New slide': 'Neue Folie',
   'Activity': 'Aktivität', 'Title': 'Titel', 'Content': 'Inhalt', 'Layout': 'Layout', 'Status': 'Status',
   'Title slide': 'Titelfolie', 'Title + content': 'Titel + Inhalt', 'Section header': 'Abschnittstitel', 'Two columns': 'Zwei Spalten',
@@ -48,8 +47,8 @@ const I18N_DICT = { de: {
   'You only do this once. On your PC open SlideLink →': 'Das machst du nur einmal. Öffne am PC SlideLink →', ', then type the code shown there.': ', und tippe den dort angezeigten Code ein.',
   'is now linked, permanently.': 'ist jetzt dauerhaft verknüpft.', '🌍 Anywhere access is on': '🌍 Zugriff von überall ist an',
   '🌍 Anywhere access is off (same Wi-Fi only)': '🌍 Zugriff von überall ist aus (nur gleiches WLAN)',
-  'Without Tailscale, the phone must be on the same Wi-Fi.': 'Ohne Tailscale muss das Handy im selben WLAN sein.',
-  'Tailscale is installed but not signed in. Open Tailscale on this PC and log in.': 'Tailscale ist installiert, aber nicht angemeldet. Öffne Tailscale auf diesem PC und melde dich an.',
+
+
   '📱 No phone connected': '📱 Kein Handy verbunden', 'Copy download link': 'Download-Link kopieren', 'Link copied ✓': 'Link kopiert ✓',
   'Scan this with your phone\'s camera to download the': 'Scanne das mit der Handy-Kamera, um die', 'SlideLink app': 'SlideLink-App',
   '. Install it, open it, then link it with a code from here.': ' herunterzuladen. Installieren, öffnen und mit einem Code von hier verknüpfen.',
@@ -65,7 +64,7 @@ const I18N_DICT = { de: {
   '○ Still': '○ Standbild', 'Interactive page': 'Interaktive Seite', 'Document · Next scrolls': 'Dokument · Weiter scrollt',
   '● Presentation on PC': '● Präsentation auf PC', '● SlideLink open on PC': '● SlideLink auf PC offen', '○ No SlideLink window on PC': '○ Kein SlideLink-Fenster auf PC',
   'All screens resynced': 'Alle Bildschirme neu synchronisiert', 'Showing the presentation on the PC (fullscreen)…': 'Präsentation wird auf dem PC gezeigt (Vollbild)…',
-  'Closing the window on the PC…': 'Fenster auf dem PC wird geschlossen…', 'Opening SlideLink on the PC (fullscreen)…': 'SlideLink wird auf dem PC geöffnet…',
+  'Closing the window on the PC…': 'Fenster auf dem PC wird geschlossen…',
   'Switch all screens to': 'Alle Bildschirme umschalten auf', '🎤 Me now': '🎤 Jetzt ich', '🎤 Nobody selected': '🎤 Niemand ausgewählt',
   // live: audience, polls, group
   'Live: audience, polls, presenters': 'Live: Publikum, Umfragen, Vortragende', '👥 Audience': '👥 Publikum', '👥 Audience link': '👥 Publikums-Link',
@@ -104,11 +103,10 @@ const I18N_DICT = { de: {
   'The phone is a remote control - edit presentations on the PC.': 'Das Handy ist eine Fernbedienung – Präsentationen am PC bearbeiten.',
   'Group members control the presentation only.': 'Gruppenmitglieder steuern nur die Präsentation.', 
   'Same as the presenter': 'Wie die vortragende Person', 'My language': 'Meine Sprache',
-  'Language': 'Sprache', 'for SlideLink on all screens': 'für SlideLink auf allen Bildschirmen',
-  'Language for SlideLink on all screens': 'Sprache für SlideLink auf allen Bildschirmen',
-  'PowerPoint, claude.ai deck (.zip), HTML deck, images': 'PowerPoint, claude.ai-Deck (.zip), HTML-Deck, Bilder',
+  'Language': 'Sprache',
+
+
   'Everything Claude saves in this folder appears here automatically': 'Alles, was Claude in diesem Ordner speichert, erscheint hier automatisch',
-  "Play the slide's animations in the preview (uses more battery)": 'Animationen der Folie in der Vorschau abspielen (braucht mehr Akku)',
   'Preview: still picture or live animations (live uses more battery). Tap to switch.': 'Vorschau: Standbild oder Live-Animationen (live braucht mehr Akku). Tippen zum Wechseln.',
   'Show the presentation on the PC / close it': 'Präsentation auf dem PC zeigen / schließen', 'Resync all screens': 'Alle Bildschirme neu synchronisieren',
   'Tap: start / pause · hold: reset': 'Tippen: Start / Pause · halten: zurücksetzen', 'Switch presentation': 'Präsentation wechseln', 'Back': 'Zurück',
@@ -201,8 +199,7 @@ const I18N = (() => {
     }
     return text.replace(trimmed, out);        // keep the surrounding spaces
   }
-  // EN: Exact text, then the number/name patterns.
-  // DE: Genauer Text, dann die Muster mit Zahlen/Namen.
+  // Exact text, then the number/name patterns.
   let outs = null;   // all translations, so already translated texts are not reported as missing
   const translated = dict => outs || (outs = new Set(Object.values(dict)));
   function lookup(dict, key) {

@@ -1,7 +1,6 @@
-# SlideLink · EN: Release checks for release.ps1, using the updater's own signature code.
+# SlideLink: Release checks for release.ps1, using the updater's own signature code.
 #   python setup/check_release.py files <folder>   every release file has a valid .sig
 #   python setup/check_release.py live <tag>        the published release on GitHub passes the updater's checks
-# SlideLink · DE: Release-Prüfungen für release.ps1, mit dem Signaturcode des Updaters selbst.
 import json
 import os
 import sys

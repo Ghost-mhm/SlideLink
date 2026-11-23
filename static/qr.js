@@ -1,11 +1,9 @@
-// SlideLink · EN: QR code generator (byte mode, error correction M, versions 1-10), returns SVG.
-// SlideLink · DE: QR-Code-Generator (Byte-Modus, Fehlerkorrektur M, Versionen 1-10), liefert SVG.
+// SlideLink: QR code generator (byte mode, error correction M, versions 1-10), returns SVG.
 'use strict';
 /* Small QR code generator (byte mode, error correction M, versions 1-10 = up to 213 bytes).
    Follows ISO/IEC 18004; structure modelled on Project Nayuki's QR Code generator (MIT).
    qrSVG(text, px) -> an <svg> string. */
-// EN: QR.encode(text) gives the module matrix, QR.svg(text, px) an SVG image.
-// DE: QR.encode(text) liefert die Modulmatrix, QR.svg(text, px) ein SVG-Bild.
+// QR.encode(text) gives the module matrix, QR.svg(text, px) an SVG image.
 const QR = (() => {
   const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];   // level M, versions 1..10
   const NUM_BLOCKS    = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];

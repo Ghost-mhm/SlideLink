@@ -1,5 +1,4 @@
 ﻿# SlideLink · EN: Removes SlideLink (app, shortcuts, Apps entry); presentations stay unless -RemoveData.
-# SlideLink · DE: Entfernt SlideLink (App, Verknüpfungen, Apps-Eintrag); Präsentationen bleiben, außer mit -RemoveData.
 # Removes the SlideLink app, its shortcuts and its Settings > Apps entry. Your presentations and linked
 # devices stay in %LOCALAPPDATA%\SlideLink unless you pass -RemoveData. -Quiet: no message at the end.
 param([switch]$RemoveData, [switch]$Quiet)

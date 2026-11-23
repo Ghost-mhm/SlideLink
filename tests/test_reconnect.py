@@ -1,6 +1,5 @@
-# SlideLink · EN: A page or the phone app that reconnects (e.g. Wi-Fi -> mobile data) replaces its old live connection at once,
+# SlideLink: A page or the phone app that reconnects (e.g. Wi-Fi -> mobile data) replaces its old live connection at once,
 #             even if the old one still looks open (the old network vanished without a goodbye). Others are left alone.
-# SlideLink · DE: Eine Seite oder die Handy-App, die sich neu verbindet, ersetzt sofort ihre alte Live-Verbindung; andere bleiben.
 import http.client
 import os
 import sys

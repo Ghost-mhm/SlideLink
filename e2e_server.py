@@ -1,8 +1,6 @@
-# SlideLink · EN: End-to-end pairing on the PC: the phone app and the PC exchange identity keys through the (untrusted) relay and
+# SlideLink: End-to-end pairing on the PC: the phone app and the PC exchange identity keys through the (untrusted) relay and
 #             the user compares a 6-digit number on both screens, like Bluetooth pairing. A relay in the middle can't make the
 #             numbers match (commitment first, then reveal), so it can't swap keys unnoticed.
-# SlideLink · DE: Ende-zu-Ende-Koppeln am PC: Handy-App und PC tauschen über das (nicht vertrauenswürdige) Relay ihre
-#             Identitätsschlüssel, und man vergleicht eine 6-stellige Zahl auf beiden Bildschirmen, wie beim Bluetooth-Koppeln.
 #
 # Protocol (all binary values base64 in JSON):
 #   1 phone -> PC  start  {code, name, type, phone_pub, phone_eph, commit=SHA256(phone_pub|phone_eph|phone_nonce)}

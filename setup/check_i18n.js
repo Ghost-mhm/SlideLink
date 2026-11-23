@@ -1,7 +1,6 @@
-// SlideLink · EN: Lists interface texts in static/*.js / *.html that have no German translation in static/i18n.js.
+// SlideLink: Lists interface texts in static/*.js / *.html that have no German translation in static/i18n.js.
 //   node setup/check_i18n.js            report (exit 0)
 //   node setup/check_i18n.js --strict   exit 1 if anything is missing (for release checks)
-// SlideLink · DE: Listet Oberflächentexte in static/*.js / *.html ohne deutsche Übersetzung in static/i18n.js.
 'use strict';
 const fs = require('fs');
 const path = require('path');

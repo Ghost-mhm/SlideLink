@@ -1,6 +1,5 @@
-# SlideLink · EN: End-to-end sessions against a real SlideLink server: requests, live stream, commands, and attacks
+# SlideLink: End-to-end sessions against a real SlideLink server: requests, live stream, commands, and attacks
 #             (replay, tampering, foreign keys, old clock, unlinked device, trying to become the PC).
-# SlideLink · DE: Ende-zu-Ende-Sitzungen gegen einen echten SlideLink-Server: Anfragen, Live-Stream, Befehle und Angriffe.
 import json
 import os
 import sys

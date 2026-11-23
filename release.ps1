@@ -1,9 +1,8 @@
-# SlideLink - EN: One command for a release: version, build, sign, check, commit, tag, push, GitHub release, live check.
+# SlideLink: One command for a release: version, build, sign, check, commit, tag, push, GitHub release, live check.
 #   .\release.ps1 -Version 1.3.4 -Notes notes.md            stable (all PCs update automatically)
 #   .\release.ps1 -Version 1.4.0 -Notes notes.md -Beta      pre-release (only for people who download it)
 #   add -BuildApp to rebuild the Android app first (bump its version in android\AndroidManifest.xml before)
 #   add -DryRun to stop after building, signing and checking (nothing is committed or uploaded)
-# SlideLink - DE: Ein Befehl fuer ein Release: Version, Bauen, Signieren, Pruefen, Commit, Tag, Push, GitHub-Release, Live-Pruefung.
 #   Run it in a normal terminal: it needs the signing key in %USERPROFILE%\.slidelink-signing.
 param(
     [Parameter(Mandatory = $true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,

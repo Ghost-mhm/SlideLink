@@ -1,4 +1,4 @@
-# SlideLink · EN: Encrypted sessions between the paired phone app and the PC (end-to-end through the relay).
+# SlideLink: Encrypted sessions between the paired phone app and the PC (end-to-end through the relay).
 #   hello  phone -> PC  {device, phone_eph, ts, sig = phone_key.sign("SL-HELLO-1"|pc_pub|device|phone_eph|ts)}
 #          PC -> phone  {sid, pc_eph, sig = pc_key.sign("SL-HELLO-PC-1"|hello_transcript|pc_eph|sid)}
 #          k_up | k_down = HKDF(ECDH(pc_eph, phone_eph), SHA256(transcript), "slidelink session v1", 64)   (fresh per session)
@@ -7,7 +7,6 @@
 #   answer   a stream of frames  len(4) | ctr(8) | AES-GCM(k_down, nonce 0001|ctr, aad "SL-RES"|sid|seq|index(4),
 #            plaintext = type(1) | data)   types: H = {"status", "headers"}, D = body bytes, E = end
 #   The request runs inside SlideLink as that phone (same rules as always); the relay only sees opaque bytes.
-# SlideLink · DE: Verschlüsselte Sitzungen zwischen gekoppelter Handy-App und PC (Ende-zu-Ende über das Relay).
 #   Die Anfrage läuft in SlideLink als dieses Handy (dieselben Regeln wie immer); das Relay sieht nur undurchsichtige Bytes.
 import hashlib
 import http.client

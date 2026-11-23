@@ -11,10 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * EN: Runs the app's own E2e.java against a running SlideLink: pairs through the given address (the relay), confirms on the
+ * Runs the app's own E2e.java against a running SlideLink: pairs through the given address (the relay), confirms on the
  *     PC through localhost, opens a session, does requests and a live stream, then unlinks. Exit code 0 = all fine.
  *     java app.slidelink.remote.E2eLiveTest <base-url> <local-pc-url>
- * DE: Führt das E2e.java der App gegen einen laufenden SlideLink aus (Koppeln, Sitzung, Anfragen, Live-Stream, Entfernen).
  */
 public class E2eLiveTest {
     static int fails = 0;

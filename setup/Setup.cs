@@ -1,5 +1,4 @@
-// SlideLink · EN: SlideLink-Setup.exe: Windows installer with a window or silent (/S); the app files travel inside the EXE.
-// SlideLink · DE: SlideLink-Setup.exe: Windows-Installer mit Fenster oder still (/S); die App-Dateien stecken in der EXE.
+// SlideLink-Setup.exe: Windows installer with a window or silent (/S); the app files travel inside the EXE.
 // SlideLink-Setup.exe: installs SlideLink for the current user (no admin rights needed).
 // The app files travel inside this EXE (resource "payload.zip"); install.ps1 from it does the actual install.
 using System;
@@ -18,15 +17,13 @@ using Microsoft.Win32;
 [assembly: AssemblyVersion("1.4.1.0")]
 [assembly: AssemblyFileVersion("1.4.1.0")]
 
-// EN: Entry point: window, silent install (/S) or a picture of the window (/Snapshot).
-// DE: Einstieg: Fenster, stille Installation (/S) oder ein Bild des Fensters (/Snapshot).
+// Entry point: window, silent install (/S) or a picture of the window (/Snapshot).
 static class Program
 {
     public const string Version = "1.4.1";
 
     [STAThread]
-    // EN: Starts the setup in the chosen mode.
-    // DE: Startet das Setup im gewählten Modus.
+    // Starts the setup in the chosen mode.
     static int Main(string[] args)
     {
         // SlideLink-Setup.exe /S  = silent install (no window), e.g. for updates or testing.
@@ -59,12 +56,10 @@ static class Program
     }
 }
 
-// EN: The setup window: checks, options, progress and log.
-// DE: Das Setup-Fenster: Prüfungen, Optionen, Fortschritt und Log.
+// The setup window: checks, options, progress and log.
 class SetupForm : Form
 {
-    // EN: Text in the Windows display language (German or English).
-    // DE: Text in der Anzeigesprache von Windows (Deutsch oder Englisch).
+    // Text in the Windows display language (German or English).
     public static string T(string en, string de)
     {
         return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "de" ? de : en;
@@ -140,15 +135,12 @@ class SetupForm : Form
         CheckRequirements();
     }
 
-    // EN: Shows a path with %USERPROFILE% instead of the user folder.
-    // DE: Zeigt einen Pfad mit %USERPROFILE% statt des Benutzerordners.
+    // Shows a path with %USERPROFILE% instead of the user folder.
     static string Shorten(string p) { return p.Replace(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "%USERPROFILE%"); }
-    // EN: Path of the 'Start with Windows' shortcut.
-    // DE: Pfad der Verknüpfung für 'Mit Windows starten'.
+    // Path of the 'Start with Windows' shortcut.
     static string StartupLink() { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SlideLink.lnk"); }
 
-    // EN: Button style (primary or secondary).
-    // DE: Knopfstil (primär oder sekundär).
+    // Button style (primary or secondary).
     void Style(Button b, bool primary)
     {
         b.FlatStyle = FlatStyle.Flat; b.FlatAppearance.BorderSize = 0; b.Cursor = Cursors.Hand;
@@ -157,8 +149,7 @@ class SetupForm : Form
     }
 
     // ---------- requirements ----------
-    // EN: Checks Python and the browser and enables Install.
-    // DE: Prüft Python und den Browser und gibt Installieren frei.
+    // Checks Python and the browser and enables Install.
     void CheckRequirements()
     {
         python = FindPython();
@@ -172,8 +163,7 @@ class SetupForm : Form
         statusLabel.Text = python == null ? T("Press \"Install Python\" (uses Windows' winget), then Install.", "Tippe auf \"Python installieren\" (nutzt winget von Windows), dann auf Installieren.") : "";
     }
 
-    // EN: Finds Python 3.10+ (registry, usual folders, py, python); ignores the Store alias.
-    // DE: Findet Python 3.10+ (Registry, übliche Ordner, py, python); ignoriert den Store-Alias.
+    // Finds Python 3.10+ (registry, usual folders, py, python); ignores the Store alias.
     static string FindPython()
     {
         var candidates = new List<string>();
@@ -215,8 +205,7 @@ class SetupForm : Form
         return best;
     }
 
-    // EN: Finds Chrome or Edge.
-    // DE: Findet Chrome oder Edge.
+    // Finds Chrome or Edge.
     static string FindBrowser()
     {
         var exes = new[] { "chrome.exe", "msedge.exe" };
@@ -231,8 +220,7 @@ class SetupForm : Form
         return null;
     }
 
-    // EN: Runs a program and returns its output (or null).
-    // DE: Startet ein Programm und gibt seine Ausgabe zurück (oder null).
+    // Runs a program and returns its output (or null).
     static string Run(string exe, string args)
     {
         try
@@ -248,8 +236,7 @@ class SetupForm : Form
         catch { return null; }
     }
 
-    // EN: Installs Python with winget; without winget it opens python.org and waits.
-    // DE: Installiert Python mit winget; ohne winget öffnet es python.org und wartet.
+    // Installs Python with winget; without winget it opens python.org and waits.
     void InstallPython(object s, EventArgs e)
     {
         var r = MessageBox.Show(T("SlideLink needs Python. Install Python 3.13 now with Windows' package manager (winget)?\n\n", "SlideLink braucht Python. Python 3.13 jetzt mit der Windows-Paketverwaltung (winget) installieren?\n\n") +
@@ -280,8 +267,7 @@ class SetupForm : Form
     }
 
     // ---------- install ----------
-    // EN: Install button: starts the installation in the background.
-    // DE: Knopf Installieren: startet die Installation im Hintergrund.
+    // Install button: starts the installation in the background.
     void OnInstall(object s, EventArgs e)
     {
         if (done) { Close(); return; }
@@ -292,20 +278,17 @@ class SetupForm : Form
         new Thread(() => DoInstall(desktop, startup, launch)) { IsBackground = true }.Start();
     }
 
-    // EN: Adds a line to the log box.
-    // DE: Fügt eine Zeile zum Log-Feld hinzu.
+    // Adds a line to the log box.
     void Log(string line) { BeginInvoke((Action)(() => { log.AppendText(line + Environment.NewLine); })); }
 
-    // EN: Window mode: installs and updates the window when done.
-    // DE: Fenstermodus: installiert und aktualisiert danach das Fenster.
+    // Window mode: installs and updates the window when done.
     void DoInstall(bool desktop, bool startup, bool launch)
     {
         string error = Install(desktop, startup, launch, Log);
         FinishUi(error, desktop);
     }
 
-    // EN: Unpacks the app, runs install.ps1, cleans up and starts SlideLink if wanted. Returns an error or null.
-    // DE: Entpackt die App, führt install.ps1 aus, räumt auf und startet SlideLink auf Wunsch. Gibt einen Fehler oder null zurück.
+    // Unpacks the app, runs install.ps1, cleans up and starts SlideLink if wanted. Returns an error or null.
     public static string Install(bool desktop, bool startup, bool launch, Action<string> Log)
     {
         string python = FindPython();
@@ -347,8 +330,7 @@ class SetupForm : Form
         return error;
     }
 
-    // EN: Shows success (Finish) or the error in the window.
-    // DE: Zeigt Erfolg (Fertig) oder den Fehler im Fenster.
+    // Shows success (Finish) or the error in the window.
     void FinishUi(string error, bool desktop)
     {
         BeginInvoke((Action)(() =>

@@ -1,7 +1,18 @@
-// SlideLink · EN: SlideLink Relay as a Cloudflare Worker: the meeting point on the internet for every SlideLink PC.
-// SlideLink · DE: SlideLink-Relay als Cloudflare Worker: der Treffpunkt im Internet für jeden SlideLink-PC.
+// SlideLink Relay as a Cloudflare Worker: the meeting point on the internet for every SlideLink PC.
 //
-// Same protocol as relay/relay.py (see there). Each PC gets its own Durable Object, found by its id:
+// The PC keeps ONE permanent WebSocket to the relay (outgoing, so routers, carrier NAT and school or hotel
+// networks don't matter). Phones open  <relay>/p/<pc-id>  once; a cookie then routes all their requests to that PC.
+// Requests go to the PC over the WebSocket, answers come back as a stream (SSE works).
+//
+//   relay -> PC   {"t":"req","rid":…,"method":…,"path":…,"headers":{…},"client":…,"body":<base64>,"pieces":bool}
+//                 binary: 16 bytes rid + data                  pieces of a big upload, sent before its "req"
+//                 {"t":"cancel","rid":…}                       the phone left
+//   PC -> relay   {"t":"head","rid":…,"status":200,"headers":[[k,v],…]}
+//                 binary: 16 bytes rid + data                  any number of pieces
+//                 {"t":"end","rid":…}
+//                 {"t":"ping"}  ->  {"t":"pong"}
+//
+// Each PC gets its own Durable Object, found by its id:
 // the PC keeps one WebSocket to it, phones send normal HTTPS requests, the object passes them on.
 // WebSocket messages don't count as Worker requests, and pings are answered without waking the object.
 

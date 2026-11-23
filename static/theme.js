@@ -1,5 +1,4 @@
-// SlideLink · EN: Appearance per device: light, dark or like the system. Loaded first, so the page never flashes in the wrong colors.
-// SlideLink · DE: Anzeige pro Gerät: hell, dunkel oder wie das System. Wird zuerst geladen, damit die Seite nie in falschen Farben aufblitzt.
+// SlideLink: Appearance per device: light, dark or like the system. Loaded first, so the page never flashes in the wrong colors.
 'use strict';
 const THEME = (() => {
   const media = window.matchMedia ? matchMedia('(prefers-color-scheme: light)') : null;

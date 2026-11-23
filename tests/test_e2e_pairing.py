@@ -1,7 +1,5 @@
-# SlideLink · EN: End-to-end pairing against a real SlideLink server (own port and data folder): a simulated phone app pairs,
+# SlideLink: End-to-end pairing against a real SlideLink server (own port and data folder): a simulated phone app pairs,
 #             a relay in the middle tries to swap keys, wrong codes, replays, and the old pairing must keep working.
-# SlideLink · DE: Ende-zu-Ende-Koppeln gegen einen echten SlideLink-Server (eigener Port und Datenordner): ein nachgebautes Handy
-#             koppelt, ein Relay in der Mitte versucht Schlüssel zu tauschen, falsche Codes, Wiederholungen, altes Koppeln.
 import base64
 import hashlib
 import http.cookiejar

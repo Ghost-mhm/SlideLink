@@ -107,7 +107,7 @@ static/              Web-Oberfläche: Bibliothek, Editor, Präsentation, Handy-F
 android/             Android-App (Java, ohne Gradle) + Build-Skript
 setup/               Windows-Installer (C#, kompiliert mit dem in Windows enthaltenen C#-Compiler)
 chrome-extension/    Optional: Decks aus claude.ai in Chrome importieren
-relay/               SlideLink-Relay: Cloudflare Worker (worker/) und eine lokale Testversion (relay.py)
+relay/               SlideLink-Relay: der Cloudflare Worker (worker/)
 install.ps1 / uninstall.ps1, updater.py, wsmini.py, make_cert.ps1, pdf_pages.ps1, save_deck.py, save_doc.py, import_claude_deck.py, make_icon.py
 ```
 

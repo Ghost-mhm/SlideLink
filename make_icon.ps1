@@ -1,5 +1,4 @@
 ﻿# SlideLink · EN: Builds every icon size (PNG 1024/512/192, icon.ico 16-256, Chrome extension) from static/icon.svg. Usage: powershell -File make_icon.ps1
-# SlideLink · DE: Erzeugt alle Symbolgrößen (PNG 1024/512/192, icon.ico 16-256, Chrome-Erweiterung) aus static/icon.svg. Aufruf: powershell -File make_icon.ps1
 # Renders the SlideLink logo (static/icon.svg) at 1024 px with headless Chrome and scales it down with high quality.
 # Tiny sizes (<= 32 px) use a simplified version (no thin lines), so they stay sharp in the tray and browser tabs.
 param([string]$Root = $PSScriptRoot)

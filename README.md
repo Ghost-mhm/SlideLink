@@ -107,7 +107,7 @@ static/              Web UI: library, editor, presenter, phone remote (plain JS,
 android/             Android app (Java, no Gradle) + build script
 setup/               Windows installer (C#, compiled with the C# compiler built into Windows)
 chrome-extension/    Optional: import decks from claude.ai in Chrome
-relay/               SlideLink Relay: Cloudflare Worker (worker/) and a local test version (relay.py)
+relay/               SlideLink Relay: the Cloudflare Worker (worker/)
 install.ps1 / uninstall.ps1, updater.py, wsmini.py, make_cert.ps1, pdf_pages.ps1, save_deck.py, save_doc.py, import_claude_deck.py, make_icon.py
 ```
 

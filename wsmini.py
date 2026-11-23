@@ -1,5 +1,4 @@
-# SlideLink · EN: Minimal WebSocket (RFC 6455) client and server, standard library only: the PC's permanent line to the relay.
-# SlideLink · DE: Minimaler WebSocket (RFC 6455) als Client und Server, nur Standardbibliothek: die Dauerleitung des PCs zum Relay.
+# SlideLink: Minimal WebSocket (RFC 6455) client and server, standard library only: the PC's permanent line to the relay.
 import base64
 import hashlib
 import os

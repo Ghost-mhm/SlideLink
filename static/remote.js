@@ -1,23 +1,19 @@
-// SlideLink · EN: Phone remote: preview, build dots, notes, timer, slide and presentation lists, PC window button.
-// SlideLink · DE: Handy-Fernbedienung: Vorschau, Build-Punkte, Notizen, Timer, Folien- und Präsentationslisten, Knopf für das PC-Fenster.
+// SlideLink: Phone remote: preview, build dots, notes, timer, slide and presentation lists, PC window button.
 'use strict';
 /* SlideLink phone remote: a remote display + presentation manager for the desktop app.
    Shows the live slide, skips, blacks out, jumps to slides and switches presentations.
    No editing here - that happens on the PC. */
 
 const timer = JSON.parse(localStorage.getItem('sl-timer') || '{"start":0,"acc":0,"run":false}');
-// EN: Timer as mm:ss.
-// DE: Timer als mm:ss.
+// Timer as mm:ss.
 function timerText() {
   const ms = timer.acc + (timer.run ? Date.now() - timer.start : 0);
   const t = Math.floor(ms / 1000);
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
 }
-// EN: Keeps the timer across reloads.
-// DE: Behält den Timer über Neuladen hinweg.
+// Keeps the timer across reloads.
 function saveTimer() { localStorage.setItem('sl-timer', JSON.stringify(timer)); }
-// EN: Starts the timer (on the first Next).
-// DE: Startet den Timer (beim ersten Weiter).
+// Starts the timer (on the first Next).
 function startTimer() { if (!timer.run) { timer.run = true; timer.start = Date.now(); saveTimer(); } }
 
 let sheet = null;            // 'slides' | 'decks' | null
@@ -27,8 +23,7 @@ let remoteLive = !!localStorage.getItem('sl-remote-live');
 let myName = '';                                              // this phone's name (for "I'm presenting")   // preview: still picture (default, battery) or live
 let lastPresenting = null;   // 'deck' | 'doc'
 
-// EN: Builds the remote screen and its buttons, swipes and keys.
-// DE: Baut die Fernbedienung mit Knöpfen, Wischgesten und Tasten.
+// Builds the remote screen and its buttons, swipes and keys.
 function initRemote() {
   document.title = 'SlideLink Remote';
   HS_LOWPOWER = true;                    // small preview: ~12 fps, endless loops paused (battery)
@@ -142,8 +137,7 @@ function initRemote() {
 /* One button, by state: presentation not on the PC → "Show on PC" (borderless fullscreen);
    presentation open on the PC → "Close window on PC" (SlideLink keeps running, show it again any time). */
 let pcPending = null;   // {want: true|false, until} while the PC opens/closes the window
-// EN: One button by state: show the presentation on the PC, or close its window.
-// DE: Ein Knopf je nach Zustand: Präsentation auf dem PC zeigen oder ihr Fenster schließen.
+// One button by state: show the presentation on the PC, or close its window.
 async function showOnPC() {
   const pw = (S && S.pc_windows) || {};
   pcPending = { want: !pw.present, until: Date.now() + 12000 };
@@ -157,8 +151,7 @@ async function showOnPC() {
   }
 }
 /* Android app: keep the screen on only while presenting (presentation on the PC or timer running) */
-// EN: Android app: screen stays on only while presenting.
-// DE: Android-App: Bildschirm bleibt nur beim Präsentieren an.
+// Android app: screen stays on only while presenting.
 function presentingChanged() {
   const now = !!((S && S.pc_windows && S.pc_windows.present) || timer.run);
   if (now === lastPresenting) return;
@@ -166,8 +159,7 @@ function presentingChanged() {
   if (window.SlideLinkApp && SlideLinkApp.setPresenting) SlideLinkApp.setPresenting(now);
 }
 setInterval(() => typeof S !== 'undefined' && S && presentingChanged(), 2000);   // safe even if app.js failed to load
-// EN: Text of the PC button (with 'Opening…'/'Closing…' right after a tap).
-// DE: Text des PC-Knopfs (direkt nach dem Tippen mit 'Opening…'/'Closing…').
+// Text of the PC button (with 'Opening…'/'Closing…' right after a tap).
 function renderPcBtn() {
   const b = $('#pcBtn');
   if (!b || !S) return;
@@ -182,8 +174,7 @@ function renderPcBtn() {
   set(open ? IC('close') : IC('pc'), open ? 'Close' : 'On PC', open);
 }
 setInterval(() => pcPending && typeof S !== 'undefined' && renderPcBtn(), 1000);
-// EN: Short green confirmation message.
-// DE: Kurze grüne Bestätigungsmeldung.
+// Short green confirmation message.
 function toastOk(msg) {
   const c = $('#conn');
   c.textContent = msg; c.classList.remove('ok'); c.classList.add('good');
@@ -191,8 +182,7 @@ function toastOk(msg) {
 }
 
 /* ---------- sheets ---------- */
-// EN: Opens the slides or presentations sheet.
-// DE: Öffnet die Folien- oder Präsentationsliste.
+// Opens the slides or presentations sheet.
 function openSheet(kind) {
   sheet = kind;
   $('#sheet').classList.add('on');
@@ -200,17 +190,14 @@ function openSheet(kind) {
   if (kind === 'decks') loadRemoteDecks();
   renderSheet();
 }
-// EN: Closes the sheet.
-// DE: Schließt die Liste.
+// Closes the sheet.
 function closeSheet() { sheet = null; $('#sheet').classList.remove('on'); $('#sheet').setAttribute('aria-hidden', 'true'); }
-// EN: Loads the presentations for the sheet.
-// DE: Lädt die Präsentationen für die Liste.
+// Loads the presentations for the sheet.
 async function loadRemoteDecks() {
   const r = await fetch('/api/library', { headers: authHeaders(), cache: 'no-store' }).catch(() => null);
   if (r && r.ok) { remoteDecks = await r.json(); renderSheet(); }
 }
-// EN: Taps in the sheet: tab, slide, presentation.
-// DE: Tippen in der Liste: Reiter, Folie, Präsentation.
+// Taps in the sheet: tab, slide, presentation.
 async function onSheetClick(e) {
   const ol = e.target.closest('[data-ownlang]');
   if (ol) { I18N.setOwn(ol.dataset.ownlang, S && S.lang); return renderSheet(); }
@@ -228,10 +215,8 @@ async function onSheetClick(e) {
     if (j.ok) { closeSheet(); timer.run = false; timer.acc = 0; saveTimer(); }
   }
 }
-// EN: Draws the slides grid or the presentations list (two tabs, by day).
-// DE: Zeichnet das Folienraster oder die Präsentationsliste (zwei Reiter, nach Tagen).
-// EN: Buttons in the Live sheet: audience link, polls, who presents.
-// DE: Knöpfe in der Live-Liste: Publikums-Link, Umfragen, wer präsentiert.
+// Draws the slides grid or the presentations list (two tabs, by day).
+// Buttons in the Live sheet: audience link, polls, who presents.
 async function liveAction(kind, el) {
   if (kind === 'qr') return api({ op: 'join_qr', on: !(S.audience && S.audience.qr) });
   if (kind === 'copy') { navigator.clipboard.writeText(audienceUrl()).then(() => toastOk('Audience link copied')); return; }
@@ -249,8 +234,7 @@ async function liveAction(kind, el) {
   if (kind === 'speaker') return api({ op: 'speaker_set', name: el.dataset.name || '' });
 }
 
-// EN: The Live sheet. The poll form is drawn only once, so typing is never interrupted by live updates.
-// DE: Die Live-Liste. Das Umfrageformular wird nur einmal gezeichnet, damit Live-Updates das Tippen nie stören.
+// The Live sheet. The poll form is drawn only once, so typing is never interrupted by live updates.
 function renderLiveSheet() {
   const body = $('#sheetBody');
   if (!body.querySelector('#lvAud')) {
@@ -319,8 +303,7 @@ function renderSheet() {
 }
 
 /* ---------- live view ---------- */
-// EN: Updates the remote: preview (still or live), counters, notes, buttons.
-// DE: Aktualisiert die Fernbedienung: Vorschau (Standbild oder live), Zähler, Notizen, Knöpfe.
+// Updates the remote: preview (still or live), counters, notes, buttons.
 function renderRemote() {
   const list = slides(), i = S.present.index, s = list[i], nx = list[i + 1];
   const steps = hsSteps(s), step = S.present.step || 0;

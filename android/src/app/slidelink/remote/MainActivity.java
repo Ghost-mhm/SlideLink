@@ -1,5 +1,4 @@
-// SlideLink · EN: SlideLink Android app: native shell around the phone remote (finding the PC, login, keys, screen, updates).
-// SlideLink · DE: SlideLink-Android-App: native Hülle um die Handy-Fernbedienung (PC finden, Anmeldung, Tasten, Bildschirm, Updates).
+// SlideLink Android app: native shell around the phone remote (finding the PC, login, keys, screen, updates).
 package app.slidelink.remote;
 
 import android.app.Activity;
@@ -60,8 +59,7 @@ import java.util.Map;
  * (a clear "PC not reachable" screen that keeps retrying), keeps the screen on and maps the volume keys
  * to Next / Back.
  */
-// EN: The only screen of the app: WebView with the remote plus a native offline screen.
-// DE: Der einzige Bildschirm der App: WebView mit der Fernbedienung plus nativer Offline-Bildschirm.
+// The only screen of the app: WebView with the remote plus a native offline screen.
 public class MainActivity extends Activity {
     private static final int BG = Color.rgb(0x08, 0x09, 0x0c);   // near black: OLED pixels almost off (battery)
     private static final long DIM_AFTER_MS = 20_000;     // no touch for 20 s while presenting: dim the screen
@@ -84,16 +82,14 @@ public class MainActivity extends Activity {
     private ConnectivityManager.NetworkCallback netCallback;
 
     /** Network changed (Wi-Fi on/off, other Wi-Fi, mobile data): look again which way to the PC is best. */
-    // EN: Looks again for the best way to the PC after a short delay (network changed).
-    // DE: Sucht nach kurzer Pause erneut den besten Weg zum PC (Netz hat sich geändert).
+    // Looks again for the best way to the PC after a short delay (network changed).
     private void scheduleRecheck(long delayMs) {
         if (groupMode) return;              // in a group session the address is fixed by the link
         ui.removeCallbacks(recheck);
         ui.postDelayed(recheck, delayMs);
     }
 
-    // EN: True if the phone is on Wi-Fi (or Ethernet) right now.
-    // DE: True, wenn das Handy gerade im WLAN (oder per Ethernet) ist.
+    // True if the phone is on Wi-Fi (or Ethernet) right now.
     private boolean onWifi() {
         try {
             ConnectivityManager cm = getSystemService(ConnectivityManager.class);
@@ -109,30 +105,26 @@ public class MainActivity extends Activity {
     private E2eKeys keys;
     private AlertDialog pairDialog;
 
-    // EN: This phone's end-to-end key (created on first use, kept in the Android Keystore).
-    // DE: Der Ende-zu-Ende-Schlüssel dieses Handys (beim ersten Gebrauch erzeugt, im Android-Keystore).
+    // This phone's end-to-end key (created on first use, kept in the Android Keystore).
     private synchronized E2eKeys keys() throws Exception {
         if (keys == null) keys = new E2eKeys();
         return keys;
     }
 
-    // EN: Opens connections; on the home Wi-Fi only the paired PC's own certificate is trusted.
-    // DE: Öffnet Verbindungen; im Heim-WLAN wird nur dem eigenen Zertifikat des gekoppelten PCs vertraut.
+    // Opens connections; on the home Wi-Fi only the paired PC's own certificate is trusted.
     private final E2e.Opener opener = u -> {
         HttpURLConnection c = (HttpURLConnection) new URL(u).openConnection();
         if (c instanceof HttpsURLConnection && isLan(u)) pinned((HttpsURLConnection) c);
         return c;
     };
 
-    // EN: True once this phone is paired end-to-end with its PC.
-    // DE: True, sobald dieses Handy Ende-zu-Ende mit seinem PC gekoppelt ist.
+    // True once this phone is paired end-to-end with its PC.
     private boolean e2ePaired() {
         return !prefs.getString("e2e_dev", "").isEmpty() && !prefs.getString("e2e_pc", "").isEmpty();
     }          // joined someone's group session (co-presenter), not linked to a PC
 
     /** Used by the SlideLink page (⚙ panel): app version + "Check for updates". */
-    // EN: JavaScript bridge (window.SlideLinkApp): the page and the app exchange version, login, addresses and state.
-    // DE: JavaScript-Brücke (window.SlideLinkApp): Seite und App tauschen Version, Anmeldung, Adressen und Zustand aus.
+    // JavaScript bridge (window.SlideLinkApp): the page and the app exchange version, login, addresses and state.
     final class Bridge {
         @JavascriptInterface public String version() { return Updater.installedName(MainActivity.this); }
         @JavascriptInterface public void checkUpdate() { ui.post(() -> updater.check(base, true)); }
@@ -198,8 +190,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    // EN: Builds the screen, sets up the WebView and starts looking for the PC; watches network changes.
-    // DE: Baut den Bildschirm, richtet die WebView ein und sucht den PC; beobachtet Netzwechsel.
+    // Builds the screen, sets up the WebView and starts looking for the PC; watches network changes.
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -238,15 +229,13 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient());
         web.addJavascriptInterface(new Bridge(), "SlideLinkApp");
         web.setWebViewClient(new WebViewClient() {
-            // EN: The page could not load: show the offline screen.
-            // DE: Die Seite konnte nicht laden: Offline-Bildschirm zeigen.
+            // The page could not load: show the offline screen.
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (req.isForMainFrame()) showOffline(L.t("Can’t reach SlideLink on your PC.", "SlideLink auf deinem PC ist nicht erreichbar."));
             }
 
-            // EN: Keeps navigation inside SlideLink (other links are not opened in the app).
-            // DE: Hält die Navigation innerhalb von SlideLink (andere Links öffnen sich nicht in der App).
+            // Keeps navigation inside SlideLink (other links are not opened in the app).
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 E2eWeb w = e2eWeb;
@@ -254,16 +243,14 @@ public class MainActivity extends Activity {
                 return base == null || !req.getUrl().toString().startsWith(origin(base));   // stay inside SlideLink
             }
 
-            // EN: End-to-end mode: every request of the page is answered encrypted by the app (nothing goes out in the clear).
-            // DE: Ende-zu-Ende-Modus: Jede Anfrage der Seite beantwortet die App verschlüsselt (nichts geht im Klartext raus).
+            // End-to-end mode: every request of the page is answered encrypted by the app (nothing goes out in the clear).
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 E2eWeb w = e2eWeb;
                 return w == null ? null : w.intercept(view, req);
             }
 
-            // EN: The PC's own certificate on the home Wi-Fi: accepted only if it is exactly the paired PC's.
-            // DE: Das eigene Zertifikat des PCs im Heim-WLAN: nur akzeptiert, wenn es genau das des gekoppelten PCs ist.
+            // The PC's own certificate on the home Wi-Fi: accepted only if it is exactly the paired PC's.
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 byte[] der = SslCertificate.saveState(error.getCertificate()).getByteArray("x509-certificate");
@@ -290,8 +277,7 @@ public class MainActivity extends Activity {
 
     // ---------- finding the PC ----------
 
-    // EN: Addresses to try, in order: home Wi-Fi first when on Wi-Fi, then the relay, then the rest.
-    // DE: Adressen zum Ausprobieren, der Reihe nach: im WLAN zuerst Heim-WLAN, dann das Relay, dann der Rest.
+    // Addresses to try, in order: home Wi-Fi first when on Wi-Fi, then the relay, then the rest.
     private List<String> candidates() {
         List<String> list = new ArrayList<>();
         // same Wi-Fi as the PC? then the direct Wi-Fi way first (fast, works without internet)
@@ -310,10 +296,8 @@ public class MainActivity extends Activity {
         return list;
     }
 
-    // EN: Tries the addresses one by one and opens the first that answers; asks on the very first start.
-    // DE: Probiert die Adressen nacheinander und öffnet die erste, die antwortet; fragt beim allerersten Start.
-    // EN: Opens a group link (slidelink://group?u=…&k=…) from the join page: co-presenter mode, no linking.
-    // DE: Öffnet einen Gruppen-Link (slidelink://group?u=…&k=…) von der Beitrittsseite: Mitvortragenden-Modus, ohne Verknüpfen.
+    // Tries the addresses one by one and opens the first that answers; asks on the very first start.
+    // Opens a group link (slidelink://group?u=…&k=…) from the join page: co-presenter mode, no linking.
     private boolean handleGroupIntent(Intent intent) {
         Uri d = intent == null ? null : intent.getData();
         if (d == null || !"slidelink".equals(d.getScheme()) || !"group".equals(d.getHost())) return false;
@@ -324,8 +308,7 @@ public class MainActivity extends Activity {
         return true;
     }
 
-    // EN: Shows the group page of the session (name, then the co-presenter remote).
-    // DE: Zeigt die Gruppenseite der Sitzung (Name, dann die Mitvortragenden-Fernbedienung).
+    // Shows the group page of the session (name, then the co-presenter remote).
     private void enterGroup() {
         String gb = prefs.getString("group_base", null), gk = prefs.getString("group_key", null);
         if (gb == null || gk == null) { groupMode = false; findPc(); return; }
@@ -379,8 +362,7 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    // EN: True if SlideLink answers at this address within the timeout.
-    // DE: True, wenn SlideLink an dieser Adresse innerhalb des Zeitlimits antwortet.
+    // True if SlideLink answers at this address within the timeout.
     private boolean reachable(String address, int timeoutMs) {
         HttpURLConnection c = null;
         try {
@@ -396,22 +378,19 @@ public class MainActivity extends Activity {
         }
     }
 
-    // EN: scheme://host:port of an address (relay addresses end in /p/<pc-id>, but the pages live at the root).
-    // DE: schema://host:port einer Adresse (Relay-Adressen enden auf /p/<pc-id>, die Seiten liegen aber im Stamm).
+    // scheme://host:port of an address (relay addresses end in /p/<pc-id>, but the pages live at the root).
     private static String origin(String address) {
         int i = address.indexOf('/', address.indexOf("://") + 3);
         return i < 0 ? address : address.substring(0, i);
     }
 
-    // EN: True for the PC's home Wi-Fi addresses (from the PC's own address list), not the relay.
-    // DE: True für die Heim-WLAN-Adressen des PCs (aus seiner eigenen Adressliste), nicht das Relay.
+    // True for the PC's home Wi-Fi addresses (from the PC's own address list), not the relay.
     boolean isLan(String address) {
         for (String e : prefs.getString("lan", "").split(" ")) if (!e.isEmpty() && address.startsWith(e)) return true;
         return false;
     }
 
-    // EN: True if a certificate is exactly the paired PC's own one (SHA-256 of its bytes).
-    // DE: True, wenn ein Zertifikat genau das eigene des gekoppelten PCs ist (SHA-256 seiner Bytes).
+    // True if a certificate is exactly the paired PC's own one (SHA-256 of its bytes).
     private boolean pinMatches(byte[] der) {
         String pin = prefs.getString("pin", "");
         if (pin.isEmpty()) return false;
@@ -424,8 +403,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    // EN: Lets a connection trust only the paired PC's certificate (any name: the PC is identified by the certificate).
-    // DE: Lässt eine Verbindung nur dem Zertifikat des gekoppelten PCs vertrauen (beliebiger Name: der PC wird am Zertifikat erkannt).
+    // Lets a connection trust only the paired PC's certificate (any name: the PC is identified by the certificate).
     void pinned(HttpsURLConnection c) throws Exception {
         TrustManager tm = new X509TrustManager() {
             public void checkClientTrusted(X509Certificate[] chain, String type) { }
@@ -444,8 +422,7 @@ public class MainActivity extends Activity {
         c.setHostnameVerifier((host, session) -> true);
     }
 
-    // EN: Opens the remote at an address (hands over the login cookie first).
-    // DE: Öffnet die Fernbedienung an einer Adresse (übergibt vorher das Anmelde-Cookie).
+    // Opens the remote at an address (hands over the login cookie first).
     private void open(String address) {
         if (address.equals(base) && web.getVisibility() == View.VISIBLE) return;   // already on the best way
         base = address;
@@ -484,8 +461,7 @@ public class MainActivity extends Activity {
         ui.postDelayed(this::offerE2eUpgrade, 4000);
     }
 
-    // EN: The relay answered with something that is not from the paired PC: stop and warn (never fall back to unencrypted).
-    // DE: Das Relay antwortete mit etwas, das nicht vom gekoppelten PC kommt: anhalten und warnen (nie unverschlüsselt weiter).
+    // The relay answered with something that is not from the paired PC: stop and warn (never fall back to unencrypted).
     private void notThePc() {
         e2eWeb = null;
         web.stopLoading();
@@ -496,8 +472,7 @@ public class MainActivity extends Activity {
 
     // ---------- end-to-end pairing ----------
 
-    // EN: Pairs end-to-end with the code from the PC: shows the 6-digit number to compare and waits for "Yes" on the PC.
-    // DE: Koppelt Ende-zu-Ende mit dem Code vom PC: zeigt die 6-stellige Prüfzahl und wartet auf „Ja“ am PC.
+    // Pairs end-to-end with the code from the PC: shows the 6-digit number to compare and waits for "Yes" on the PC.
     private void startE2ePair(String code, String name) {
         final String at = base;
         if (at == null) return;
@@ -551,15 +526,13 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    // EN: Shows a pairing error on the link page (and as a dialog if the page can't show it).
-    // DE: Zeigt einen Koppelfehler auf der Link-Seite (und als Dialog, falls die Seite ihn nicht zeigen kann).
+    // Shows a pairing error on the link page (and as a dialog if the page can't show it).
     private void pairError(String msg) {
         web.evaluateJavascript("window.__slPairErr&&window.__slPairErr(" + E2eWeb.jsString(msg) + ")", null);
         new AlertDialog.Builder(this).setMessage(msg).setPositiveButton("OK", null).show();
     }
 
-    // EN: Linked the old way (before end-to-end)? Offer once to link again end-to-end encrypted.
-    // DE: Auf die alte Art verknüpft (vor Ende-zu-Ende)? Einmal anbieten, Ende-zu-Ende neu zu verknüpfen.
+    // Linked the old way (before end-to-end)? Offer once to link again end-to-end encrypted.
     private void offerE2eUpgrade() {
         if (e2ePaired() || prefs.getString("token", "").isEmpty() || prefs.getBoolean("e2e_offered", false) || base == null || isLan(base)) return;
         prefs.edit().putBoolean("e2e_offered", true).apply();
@@ -578,8 +551,7 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    // EN: Shows the 'PC not reachable' screen and retries every 5 seconds.
-    // DE: Zeigt den Bildschirm 'PC nicht erreichbar' und versucht es alle 5 Sekunden erneut.
+    // Shows the 'PC not reachable' screen and retries every 5 seconds.
     private void showOffline(String why) {
         web.setVisibility(View.INVISIBLE);
         offline.setVisibility(View.VISIBLE);
@@ -591,8 +563,7 @@ public class MainActivity extends Activity {
 
     // ---------- the "not reachable" screen ----------
 
-    // EN: Creates the offline screen (title, spinner, text, Try again, Change PC address).
-    // DE: Erstellt den Offline-Bildschirm (Titel, Ladeanzeige, Text, Erneut versuchen, PC-Adresse ändern).
+    // Creates the offline screen (title, spinner, text, Try again, Change PC address).
     private View buildOffline() {
         offline = new LinearLayout(this);
         offline.setOrientation(LinearLayout.VERTICAL);
@@ -643,8 +614,7 @@ public class MainActivity extends Activity {
         return offline;
     }
 
-    // EN: A rounded button in SlideLink style.
-    // DE: Ein abgerundeter Knopf im SlideLink-Stil.
+    // A rounded button in SlideLink style.
     private Button button(String text, boolean primary) {
         Button b = new Button(this);
         b.setText(text);
@@ -662,8 +632,7 @@ public class MainActivity extends Activity {
         return b;
     }
 
-    // EN: Dialog to enter the PC address by hand.
-    // DE: Dialog, um die PC-Adresse von Hand einzugeben.
+    // Dialog to enter the PC address by hand.
     private void askAddress() {
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
@@ -686,8 +655,7 @@ public class MainActivity extends Activity {
 
     // ---------- keys, lifecycle ----------
 
-    // EN: Screen stays on only while presenting.
-    // DE: Bildschirm bleibt nur beim Präsentieren an.
+    // Screen stays on only while presenting.
     private void applyPresenting(boolean on) {
         presenting = on;
         if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -696,16 +664,14 @@ public class MainActivity extends Activity {
     }
 
     /** Any touch or key: full brightness again, and dim again after 20 s without touching (only while presenting). */
-    // EN: Any touch or key: full brightness; dim again after 20 s without touching while presenting.
-    // DE: Jede Berührung oder Taste: volle Helligkeit; beim Präsentieren nach 20 s ohne Berührung wieder dimmen.
+    // Any touch or key: full brightness; dim again after 20 s without touching while presenting.
     private void wake() {
         ui.removeCallbacks(dim);
         if (dimmed) setBrightness(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE, false);
         if (presenting) ui.postDelayed(dim, DIM_AFTER_MS);
     }
 
-    // EN: Sets this window's screen brightness (or back to the system value).
-    // DE: Setzt die Bildschirmhelligkeit dieses Fensters (oder zurück auf den Systemwert).
+    // Sets this window's screen brightness (or back to the system value).
     private void setBrightness(float value, boolean isDim) {
         WindowManager.LayoutParams lp = getWindow().getAttributes();
         lp.screenBrightness = value;
@@ -713,16 +679,14 @@ public class MainActivity extends Activity {
         dimmed = isDim;
     }
 
-    // EN: Every touch wakes the screen.
-    // DE: Jede Berührung weckt den Bildschirm.
+    // Every touch wakes the screen.
     @Override
     public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
         if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN) wake();
         return super.dispatchTouchEvent(ev);
     }
 
-    // EN: Volume + = Next, volume - = Back (the volume does not change).
-    // DE: Lauter = Weiter, Leiser = Zurück (die Lautstärke ändert sich nicht).
+    // Volume + = Next, volume - = Back (the volume does not change).
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (e.getAction() == KeyEvent.ACTION_DOWN) wake();
@@ -737,16 +701,14 @@ public class MainActivity extends Activity {
         return super.dispatchKeyEvent(e);
     }
 
-    // EN: Back key: back in the page if possible, else leave the app.
-    // DE: Zurück-Taste: wenn möglich zurück in der Seite, sonst App verlassen.
+    // Back key: back in the page if possible, else leave the app.
     @Override
     public void onBackPressed() {
         if (web.getVisibility() == View.VISIBLE && web.canGoBack()) web.goBack();
         else super.onBackPressed();
     }
 
-    // EN: App visible again: resume the page and check for updates.
-    // DE: App wieder sichtbar: Seite fortsetzen und nach Updates sehen.
+    // App visible again: resume the page and check for updates.
     @Override
     protected void onResume() {
         super.onResume();
@@ -755,8 +717,7 @@ public class MainActivity extends Activity {
         if (base != null) updater.autoCheck(base);
     }
 
-    // EN: App in the background: pause everything (battery).
-    // DE: App im Hintergrund: alles pausieren (Akku).
+    // App in the background: pause everything (battery).
     @Override
     protected void onPause() {
         web.onPause();
@@ -764,8 +725,7 @@ public class MainActivity extends Activity {
         super.onPause();
     }
 
-    // EN: Cleans up the WebView and the network watcher.
-    // DE: Räumt WebView und Netzwerk-Beobachter auf.
+    // Cleans up the WebView and the network watcher.
     @Override
     protected void onDestroy() {
         ui.removeCallbacksAndMessages(null);
@@ -775,8 +735,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    // EN: Converts dp to pixels.
-    // DE: Rechnet dp in Pixel um.
+    // Converts dp to pixels.
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
     }

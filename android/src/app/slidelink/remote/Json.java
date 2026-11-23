@@ -6,9 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * EN: A small JSON reader/writer (objects, arrays, strings, numbers, true/false/null), so the end-to-end code is plain Java
+ * A small JSON reader/writer (objects, arrays, strings, numbers, true/false/null), so the end-to-end code is plain Java
  *     and can be tested on a PC too.
- * DE: Ein kleiner JSON-Leser/-Schreiber, damit der Ende-zu-Ende-Code reines Java ist und sich auch am PC testen lässt.
  */
 final class Json {
     private final String s;

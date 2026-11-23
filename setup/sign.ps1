@@ -1,8 +1,6 @@
-# SlideLink · EN: Signs release files for the auto-updater (RSA-3072, SHA-256, PKCS#1 v1.5). Writes <file>.sig next to each file.
+# SlideLink: Signs release files for the auto-updater (RSA-3072, SHA-256, PKCS#1 v1.5). Writes <file>.sig next to each file.
 #             The private key stays on this PC (%USERPROFILE%\.slidelink-signing), never in the repo or on GitHub.
 #             -NewKey creates the key once and writes the public key to setup\update-key.pub (put into updater.py).
-# SlideLink · DE: Signiert Release-Dateien für den Auto-Updater (RSA-3072, SHA-256, PKCS#1 v1.5). Schreibt <Datei>.sig daneben.
-#             Der private Schlüssel bleibt auf diesem PC (%USERPROFILE%\.slidelink-signing), nie im Repo oder auf GitHub.
 param([string[]]$Files = @(), [string]$Dir = '', [switch]$NewKey)
 if ($Dir) { $Files += Get-ChildItem $Dir -File | Where-Object Extension -ne '.sig' | ForEach-Object FullName }
 $Files = @($Files | ForEach-Object { $_ -split ',' } | Where-Object { $_ })

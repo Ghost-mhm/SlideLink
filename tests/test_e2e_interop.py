@@ -1,6 +1,5 @@
-# SlideLink · EN: e2e.py must speak exactly the same crypto as Java/Android: ECDH, AES-GCM and ECDSA in both directions.
+# SlideLink: e2e.py must speak exactly the same crypto as Java/Android: ECDH, AES-GCM and ECDSA in both directions.
 #             Needs a JDK (JAVA_HOME or the one android/build.ps1 uses); skipped if none is found.
-# SlideLink · DE: e2e.py muss genau dieselbe Krypto sprechen wie Java/Android, in beide Richtungen.
 import os
 import shutil
 import subprocess

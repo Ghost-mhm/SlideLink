@@ -1,5 +1,4 @@
-// SlideLink · EN: Self-update of the Android app from the PC (app-version.json + SlideLink.apk).
-// SlideLink · DE: Selbst-Update der Android-App über den PC (app-version.json + SlideLink.apk).
+// SlideLink: Self-update of the Android app from the PC (app-version.json + SlideLink.apk).
 package app.slidelink.remote;
 
 import android.app.Activity;
@@ -30,8 +29,7 @@ import java.net.URL;
  * check() asks the PC for the newest version; if it is newer, the user is asked, the APK is downloaded
  * from the PC and handed to Android's own installer (Android shows its confirmation).
  */
-// EN: Checks the PC for a newer app version and installs it with Android's own installer.
-// DE: Prüft den PC auf eine neuere App-Version und installiert sie mit Androids eigenem Installer.
+// Checks the PC for a newer app version and installs it with Android's own installer.
 final class Updater {
     private static final String ACTION = "app.slidelink.remote.INSTALL_STATUS";
     private final Activity act;
@@ -43,8 +41,7 @@ final class Updater {
         this.act = act;
     }
 
-    // EN: versionCode of the installed app.
-    // DE: versionCode der installierten App.
+    // versionCode of the installed app.
     static int installedVersion(Context c) {
         try {
             android.content.pm.PackageInfo p = c.getPackageManager().getPackageInfo(c.getPackageName(), 0);
@@ -54,8 +51,7 @@ final class Updater {
         }
     }
 
-    // EN: versionName of the installed app (e.g. 1.7).
-    // DE: versionName der installierten App (z. B. 1.7).
+    // versionName of the installed app (e.g. 1.7).
     static String installedName(Context c) {
         try {
             return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
@@ -65,8 +61,7 @@ final class Updater {
     }
 
     /** Automatic check (at start / when coming back), at most every 10 minutes. */
-    // EN: Automatic check, at most every 10 minutes.
-    // DE: Automatische Prüfung, höchstens alle 10 Minuten.
+    // Automatic check, at most every 10 minutes.
     void autoCheck(String base) {
         if (System.currentTimeMillis() - lastAuto < 10 * 60_000) return;
         lastAuto = System.currentTimeMillis();
@@ -74,8 +69,7 @@ final class Updater {
     }
 
     /** manual = the user pressed "Check for updates": also says "up to date". */
-    // EN: Asks the PC for the newest version and offers the update (manual = also says 'up to date').
-    // DE: Fragt den PC nach der neuesten Version und bietet das Update an (manuell = sagt auch 'aktuell').
+    // Asks the PC for the newest version and offers the update (manual = also says 'up to date').
     void check(final String base, final boolean manual) {
         if (base == null || busy) return;
         busy = true;
@@ -108,8 +102,7 @@ final class Updater {
         }).start();
     }
 
-    // EN: Downloads the APK from the PC and hands it to Android's PackageInstaller.
-    // DE: Lädt die APK vom PC und übergibt sie an Androids PackageInstaller.
+    // Downloads the APK from the PC and hands it to Android's PackageInstaller.
     private void download(final String url) {
         if (Build.VERSION.SDK_INT >= 26 && !act.getPackageManager().canRequestPackageInstalls()) {
             // Android asks once: "Allow SlideLink to install apps"
@@ -152,12 +145,10 @@ final class Updater {
         }).start();
     }
 
-    // EN: Receives the installer's answer and shows Android's confirmation screen.
-    // DE: Empfängt die Antwort des Installers und zeigt Androids Bestätigungsbildschirm.
+    // Receives the installer's answer and shows Android's confirmation screen.
     private void listenForStatus() {
         BroadcastReceiver r = new BroadcastReceiver() {
-            // EN: Installer status: confirm, done or failed.
-            // DE: Installer-Status: bestätigen, fertig oder fehlgeschlagen.
+            // Installer status: confirm, done or failed.
             @Override
             public void onReceive(Context c, Intent intent) {
                 int status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE);
@@ -181,8 +172,7 @@ final class Updater {
         else act.registerReceiver(r, f);
     }
 
-    // EN: Downloads a URL into memory (with a size limit).
-    // DE: Lädt eine URL in den Speicher (mit Größenlimit).
+    // Downloads a URL into memory (with a size limit).
     private static byte[] get(String url, int max) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         if (c instanceof javax.net.ssl.HttpsURLConnection && MainActivity.current != null && MainActivity.current.isLan(url))
@@ -206,8 +196,7 @@ final class Updater {
         }
     }
 
-    // EN: Short message at the bottom of the screen.
-    // DE: Kurze Meldung unten am Bildschirm.
+    // Short message at the bottom of the screen.
     private void toast(String s) {
         ui.post(() -> Toast.makeText(act, s, Toast.LENGTH_LONG).show());
     }

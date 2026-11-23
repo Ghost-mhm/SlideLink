@@ -1,5 +1,4 @@
-# SlideLink · EN: Builds dist/SlideLink-Setup.exe from the current app files with the C# compiler built into Windows.
-# SlideLink · DE: Baut dist/SlideLink-Setup.exe aus den aktuellen App-Dateien mit dem in Windows enthaltenen C#-Compiler.
+# SlideLink: Builds dist/SlideLink-Setup.exe from the current app files with the C# compiler built into Windows.
 # Builds dist\SlideLink-Setup.exe from the current app files (uses the C# compiler that comes with Windows).
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot

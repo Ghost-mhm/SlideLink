@@ -11,12 +11,10 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * EN: Runs the remote page end-to-end encrypted: the WebView shows a virtual address (https://<pc-id>.slidelink.invalid)
+ * Runs the remote page end-to-end encrypted: the WebView shows a virtual address (https://<pc-id>.slidelink.invalid)
  *     that never touches the network. Every request of the page is answered here through E2e.Client; requests with a body
  *     (commands) come over a small fetch() replacement injected into each page, because Android doesn't hand request bodies
  *     to shouldInterceptRequest.
- * DE: Lässt die Fernbedienung Ende-zu-Ende-verschlüsselt laufen: Die WebView zeigt eine virtuelle Adresse, die nie ins Netz geht.
- *     Jede Anfrage der Seite wird hier über E2e.Client beantwortet; Anfragen mit Inhalt kommen über einen fetch()-Ersatz.
  */
 final class E2eWeb {
     final E2e.Client client;

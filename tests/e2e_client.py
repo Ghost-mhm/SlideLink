@@ -1,5 +1,4 @@
-# SlideLink · EN: A reference client for end-to-end sessions (what the Android app does), used by the tests and live checks.
-# SlideLink · DE: Ein Referenz-Client für Ende-zu-Ende-Sitzungen (was die Android-App macht), für Tests und Live-Prüfungen.
+# SlideLink: A reference client for end-to-end sessions (what the Android app does), used by the tests and live checks.
 import base64
 import hashlib
 import json
