@@ -1750,7 +1750,7 @@ def start_background():
 # EN: The HTTP request handler: web UI, REST API, live events, uploads.
 # DE: Der HTTP-Request-Handler: Web-Oberfläche, REST-API, Live-Events, Uploads.
 class Handler(BaseHTTPRequestHandler):
-    server_version = "SlideLink/1.4.0"
+    server_version = "SlideLink/1.4.1"
 
     # EN: Logs requests from phones (path only, no tokens); the PC itself stays quiet.
     # DE: Protokolliert Anfragen von Handys (nur Pfad, keine Tokens); der PC selbst bleibt still.
