@@ -349,6 +349,7 @@ PC_ROLES = {"library", "present", "edit"}  # SSE roles that are windows on the P
 ON_NOTIFY = None                           # set by the desktop app: tray notification (title, text)
 WATCH_DIR = os.environ.get("SLIDELINK_WATCH") or os.path.join(os.path.expanduser("~"), "Claude Presentations")
 KICK = object()           # queue sentinel: device was unlinked
+REPLACED = object()       # queue sentinel: the same page/app connected again (old connection is stale)
 
 
 # EN: A short random id for slides and devices.
@@ -2217,14 +2218,25 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
         q = queue.Queue()
-        cid = new_id() + (qs.get("client") or [""])[0][:16]
+        client = (qs.get("client") or [""])[0][:16]
+        cid = new_id() + client
         role = (qs.get("role") or ["viewer"])[0][:16]
+        appv = (qs.get("appv") or [""])[0][:12]      # the phone app tells its version when it connects
         with store.lock:
+            # EN: The same page (same client id) or the same phone app reconnecting, e.g. after Wi-Fi -> mobile data:
+            #     its old connection may still look open for minutes (the old network vanished without a goodbye) - drop it now.
+            # DE: Dieselbe Seite oder dieselbe Handy-App verbindet sich neu (z. B. nach WLAN -> Mobilfunk): die alte Verbindung
+            #     wirkt sonst minutenlang offen (das alte Netz verschwand ohne Abmeldung) - sofort entfernen.
+            for old_id, c in list(store.clients.items()):
+                same_page = client and c.get("client") == client and c["device"] == dev["id"]
+                same_app = appv and dev is not HOST and c.get("app") and c["device"] == dev["id"] and c["role"] == role
+                if same_page or same_app:
+                    c["q"].put(REPLACED)
+                    store.clients.pop(old_id, None)
             ip = self.client_address[0]
             via = ("pc" if dev is HOST else "e2e" if self._e2e_inner() else "relay" if self.headers.get("X-SlideLink-Relay")
                    else "internet" if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") else "wifi")   # 127.0.0.1 + linked device = through a proxy
-            store.clients[cid] = {"role": role, "device": dev["id"], "q": q, "via": via}
-            appv = (qs.get("appv") or [""])[0][:12]      # the phone app tells its version when it connects
+            store.clients[cid] = {"role": role, "device": dev["id"], "q": q, "via": via, "client": client, "app": bool(appv)}
             if appv and dev is not HOST and dev.get("app_version") != appv:
                 dev["app_version"] = appv
                 registry.save()
@@ -2237,6 +2249,8 @@ class Handler(BaseHTTPRequestHandler):
                 except queue.Empty:
                     self.wfile.write(b"event: ping\ndata: {}\n\n")
                 else:
+                    if data is REPLACED:
+                        break
                     if data is KICK:
                         self.wfile.write(b"event: unlinked\ndata: {}\n\n")
                         self.wfile.flush()
