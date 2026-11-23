@@ -6,6 +6,7 @@ const IC = (() => {
     deck: '<rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M12 17v3.5M8 20.5h8"/><path d="M10 8.5l4.5 2-4.5 2z" fill="currentColor"/>',
     doc: '<path d="M6 2.5h8l4.5 4.5v12a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 19V5A2.5 2.5 0 0 1 6 2.5z"/><path d="M13.5 2.5V7.5h5M8 12.5h8M8 16.5h5"/>',
     pc: '<rect x="2.5" y="4" width="19" height="12.5" rx="2.5"/><path d="M8.5 20.5h7M12 16.5v4"/><path d="M10.5 8.5l3.5 1.75-3.5 1.75z" fill="currentColor"/>',
+    pointer: '<circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/>',
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
     wait: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
     live: '<circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"/>',

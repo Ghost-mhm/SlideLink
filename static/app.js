@@ -171,6 +171,7 @@ function connect() {
   es.onmessage = e => {
     lastBeat = Date.now();
     const m = JSON.parse(e.data);
+    if (m.type === 'pointer') return showLaser(m);
     if (m.type !== 'state') return;
     const prev = S;
     S = m.state;
@@ -919,14 +920,15 @@ function go(kind, extra = {}) {
   }
   if (kind === 'goto') { P.index = Math.max(0, Math.min(n - 1, extra.index)); P.step = 0; }
   if (kind === 'blackout') S.present.blackout = !S.present.blackout; else S.present.blackout = false;
-  if (navigator.vibrate) navigator.vibrate(15);
   render();
   navPending++;
   navChain = navChain.then(async () => {
     const j = await api({ op: kind, ...extra, ...from });
     navPending--;
-    if (!j || !j.ok) { navPending = 0; return resync(false); }
-    if (j.result && j.result.stale) { navPending = 0; return settle(j.result); }   // someone else moved: take the truth
+    if (!j || !j.ok) { navPending = 0; buzz([40, 60, 40]); return resync(false); }   // double buzz: did not arrive
+    if (j.result && j.result.stale) { navPending = 0; buzz([40, 60, 40]); return settle(j.result); }   // someone else moved: take the truth
+    buzz(25);                                                    // one short buzz: the PC has it
+
     if (navPending === 0) settle(j.result);
   });
 }
@@ -988,6 +990,7 @@ function initPresent() {
     <div class="present" id="pres">
       <div class="frame" id="frame"></div>
       <div class="black" id="black"></div>
+      <div class="laser" id="laser"></div>
       <div class="counter" id="pcount"></div>
       <div class="overlay" id="ov">
         <span>← → or clicker · your phone remote · B = black · F = fullscreen</span>
@@ -1088,6 +1091,29 @@ window.addEventListener('message', e => {
     slot._sent = slot._step;
   }
 });
+
+// Short vibration on the phone (the app's own vibrator, else the browser's). Nothing on a PC.
+function buzz(pattern) {
+  if (KIND === 'pc') return;
+  try {
+    if (window.SlideLinkApp && SlideLinkApp.vibrate) SlideLinkApp.vibrate(JSON.stringify([].concat(pattern)));
+    else if (navigator.vibrate) navigator.vibrate(pattern);
+  } catch (_) {}
+}
+
+// Laser pointer from a phone: a red dot on the slide (x, y = 0..1 of the slide). Hides itself after 3 s without news.
+let laserT = null;
+function showLaser(m) {
+  const dot = document.getElementById('laser'), fr = document.getElementById('frame');
+  if (!dot || !fr) return;
+  clearTimeout(laserT);
+  if (m.hide) { dot.classList.remove('on'); return; }
+  const r = fr.getBoundingClientRect();
+  dot.style.left = (r.left + m.x * r.width) + 'px';
+  dot.style.top = (r.top + m.y * r.height) + 'px';
+  dot.classList.add('on');
+  laserT = setTimeout(() => dot.classList.remove('on'), 3000);
+}
 
 // Updates the presenter from the current state.
 function renderPresent() {

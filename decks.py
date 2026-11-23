@@ -281,6 +281,18 @@ class Store:
                 else:
                     c["q"].put(data)
 
+    # Laser pointer from a phone: only the presentation windows get it, nothing is saved (fast, many per second).
+    def pointer(self, op):
+        try:
+            msg = {"type": "pointer", "x": min(1.0, max(0.0, float(op["x"]))), "y": min(1.0, max(0.0, float(op["y"])))}
+        except (KeyError, TypeError, ValueError):
+            msg = {"type": "pointer", "hide": True}
+        data = json.dumps(msg)
+        with self.lock:
+            for c in self.clients.values():
+                if c["role"] == "present":
+                    c["q"].put(data)
+
     # Disconnects all live connections of an unlinked device.
     def kick(self, device_id):
         with self.lock:

@@ -60,6 +60,7 @@ function initRemote() {
       <button id="slidesBtn"><i>${IC('slides')}</i><span>Slides</span></button>
       <button id="decksBtn"><i>${IC('decks')}</i><span>Decks</span></button>
       <button id="pcBtn" title="Show the presentation on the PC / close it"><i>${IC('pc')}</i><span>On PC</span></button>
+      <button id="laserBtn" title="Big slide: point at it with your finger, a red dot shows on the PC"><i>${IC('pointer')}</i><span>Point</span></button>
       <button id="liveBtnSheet" aria-label="Audience, polls, presenters"><i>${IC('live')}</i><span>Live</span></button>
       <button id="devBtn" aria-label="Linked devices"><i>${IC('devices')}</i><span>Devices</span></button>
     </div>
@@ -67,6 +68,14 @@ function initRemote() {
       <button id="prevBtn" aria-label="Back">${IC('prev')}</button>
       <button id="blkBtn" class="rm-blk">${IC('blackout')}<small>Blackout</small></button>
       <button id="nextBtn" class="next"><span>Next</span>${IC('next')}</button>
+    </div>
+    <div class="rm-laser" id="laserView" hidden>
+      <div class="rm-laser-stage" id="laserStage"><div class="rm-laser-box" id="laserBox"></div><div class="rm-laser-dot" id="laserDot"></div></div>
+      <div class="rm-laser-bar">
+        <button id="lzPrev" aria-label="Back">${IC('prev')}</button>
+        <button id="lzClose" class="lz-done">${IC('close')}<span>Done</span></button>
+        <button id="lzNext" class="next" aria-label="Next">${IC('next')}</button>
+      </div>
     </div>
     <div class="rm-sheet" id="sheet" aria-hidden="true">
       <div class="rm-sheet-in">
@@ -101,7 +110,7 @@ function initRemote() {
   $('#syncBtn').onclick = async () => {
     const b = $('#syncBtn');
     b.classList.add('spin');
-    if (navigator.vibrate) navigator.vibrate(25);
+    buzz(25);
     await resync(true);
     setTimeout(() => b.classList.remove('spin'), 600);
     toastOk('All screens resynced');
@@ -113,22 +122,34 @@ function initRemote() {
   // timer: tap = start/pause, hold = reset
   let holdT = null;
   const tm = $('#timer');
-  tm.onpointerdown = () => { holdT = setTimeout(() => { holdT = 'reset'; timer.run = false; timer.acc = 0; saveTimer(); tm.textContent = timerText(); if (navigator.vibrate) navigator.vibrate(40); }, 700); };
+  tm.onpointerdown = () => { holdT = setTimeout(() => { holdT = 'reset'; timer.run = false; timer.acc = 0; saveTimer(); tm.textContent = timerText(); buzz(40); }, 700); };
   tm.onpointerup = () => {
     if (holdT === 'reset') { holdT = null; return; }
     clearTimeout(holdT); holdT = null;
     if (timer.run) { timer.acc += Date.now() - timer.start; timer.run = false; saveTimer(); } else startTimer();
   };
 
-  // swipe on the slide: left = next, right = back
-  let x0 = null;
-  const now = $('#now');
-  now.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
-  now.addEventListener('touchend', e => {
-    if (x0 === null) return;
-    const dx = e.changedTouches[0].clientX - x0; x0 = null;
-    if (dx < -50) { startTimer(); go('next'); } else if (dx > 50) go('prev');
+  // one hand: swipe left/right on the slide or the notes = next/back, double tap on the slide = black screen
+  for (const area of [$('#now'), $('.rm-next')]) {
+    let t0 = null;
+    area.addEventListener('touchstart', e => {
+      t0 = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+    }, { passive: true });
+    area.addEventListener('touchend', e => {
+      if (!t0) return;
+      const dx = e.changedTouches[0].clientX - t0.x, dy = e.changedTouches[0].clientY - t0.y;
+      t0 = null;
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;   // a scroll, not a swipe
+      if (dx < 0) { startTimer(); go('next'); } else go('prev');
+    });
+  }
+  let lastTap = 0;
+  $('#now').addEventListener('click', e => {
+    if (e.target.closest('button')) return;
+    const t = Date.now();
+    if (t - lastTap < 350) { lastTap = 0; go('blackout'); } else lastTap = t;
   });
+  initLaser();
   document.addEventListener('keydown', navKeys);   // Bluetooth clickers / keyboards
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tryWake(); });
   setInterval(() => { $('#timer').textContent = timerText(); S && renderClaudeBar(); }, 1000);
@@ -305,6 +326,7 @@ function renderSheet() {
 /* ---------- live view ---------- */
 // Updates the remote: preview (still or live), counters, notes, buttons.
 function renderRemote() {
+  renderLaser();
   const list = slides(), i = S.present.index, s = list[i], nx = list[i + 1];
   const steps = hsSteps(s), step = S.present.step || 0;
   $('#rTitle').textContent = S.deck.title;
@@ -343,4 +365,63 @@ function renderRemote() {
   renderClaudeBar();
   if (sheet === 'decks' && remoteDecks && remoteDecks.active !== S.deck.id) loadRemoteDecks();
   renderSheet();
+}
+
+/* Pointing: the slide big on the phone (turned sideways when the phone is upright); where the finger is,
+   a red dot shows on the PC. Only the latest position is sent, one request at a time (no lag builds up). */
+let laserOn = false, lzWant, lzBusy = false, lzRot = false;
+// Sets up the pointing view and its buttons.
+function initLaser() {
+  $('#laserBtn').onclick = () => { laserOn = true; $('#laserView').hidden = false; renderLaser(); buzz(15); };
+  $('#lzClose').onclick = () => { laserOn = false; $('#laserView').hidden = true; lzSend(null); };
+  $('#lzPrev').onclick = () => go('prev');
+  $('#lzNext').onclick = () => { startTimer(); go('next'); };
+  const st = $('#laserStage');
+  const at = e => {
+    const r = $('#laserBox').getBoundingClientRect();
+    let x, y;
+    if (lzRot) { x = (e.clientY - r.top) / r.height; y = (r.right - e.clientX) / r.width; }
+    else { x = (e.clientX - r.left) / r.width; y = (e.clientY - r.top) / r.height; }
+    if (x < 0 || x > 1 || y < 0 || y > 1) return lzSend(null);
+    const d = $('#laserDot');
+    d.style.left = e.clientX + 'px'; d.style.top = e.clientY + 'px'; d.classList.add('on');
+    lzSend({ x: +x.toFixed(4), y: +y.toFixed(4) });
+  };
+  st.addEventListener('pointerdown', e => { st.setPointerCapture(e.pointerId); at(e); });
+  st.addEventListener('pointermove', e => { if (e.buttons || e.pointerType === 'touch') at(e); });
+  const up = () => { $('#laserDot').classList.remove('on'); lzSend(null); };
+  st.addEventListener('pointerup', up);
+  st.addEventListener('pointercancel', up);
+  addEventListener('resize', () => laserOn && renderLaser());
+}
+// Draws the current slide as big as the screen allows.
+function renderLaser() {
+  if (!laserOn || !S) return;
+  const list = slides(), i = S.present.index, box = $('#laserBox'), st = $('#laserStage');
+  const key = list[i] ? list[i].id + ':' + i + ':' + (list[i].html || list[i].content || '').length : '';
+  if (box._key !== key) { box._key = key; box.innerHTML = list[i] ? slideHTML(list[i], S.deck, i, false) : ''; }
+  const W = st.clientWidth, H = st.clientHeight;
+  lzRot = H > W;                                     // upright phone: turn the slide so it fills the screen
+  const long = lzRot ? H : W, short = lzRot ? W : H;
+  const w = Math.min(long, short * 16 / 9), h = w * 9 / 16;
+  box.style.width = w + 'px'; box.style.height = h + 'px';
+  box.style.transform = `translate(-50%, -50%)${lzRot ? ' rotate(90deg)' : ''}`;
+  hsObserve(box);
+}
+// Sends the finger position (or null = hide), dropping positions that are already out of date.
+function lzSend(p) {
+  lzWant = p;
+  if (lzBusy) return;
+  lzBusy = true;
+  (async () => {
+    while (lzWant !== undefined) {
+      const q = lzWant; lzWant = undefined;
+      try {
+        await fetch('/api/op', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+          body: JSON.stringify({ op: 'pointer', ...(q || { hide: true }), origin: CLIENT }) });
+      } catch (_) {}
+      await new Promise(r => setTimeout(r, 30));
+    }
+    lzBusy = false;
+  })();
 }

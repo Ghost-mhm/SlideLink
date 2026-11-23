@@ -27,6 +27,7 @@ const I18N_DICT = { de: {
   'Title slide': 'Titelfolie', 'Title + content': 'Titel + Inhalt', 'Section header': 'Abschnittstitel', 'Two columns': 'Zwei Spalten',
   'Quote': 'Zitat', 'Image': 'Bild', 'Designed slide (HTML)': 'Gestaltete Folie (HTML)', 'Interactive page (HTML app)': 'Interaktive Seite (HTML-App)',
   'Document (pages)': 'Dokument (Seiten)', 'Draft': 'Entwurf', 'In progress': 'In Arbeit', 'Review': 'Prüfen', 'Done': 'Fertig',
+  'Point': 'Zeigen', 'Big slide: point at it with your finger, a red dot shows on the PC': 'Folie groß: mit dem Finger darauf zeigen, auf dem PC erscheint ein roter Punkt',
   'Write your text here.': 'Schreib hier deinen Text.', 'Speaker notes (shown on the phone remote)': 'Sprechernotizen (auf der Handy-Fernbedienung sichtbar)',
   'Slide HTML (designed slide, 1920×1080)': 'Folien-HTML (gestaltete Folie, 1920×1080)', 'No slides yet': 'Noch keine Folien', 'No slides': 'Keine Folien',
   'Nothing yet. Edits from you, your phone and Claude show up here.': 'Noch nichts. Änderungen von dir, deinem Handy und Claude erscheinen hier.',

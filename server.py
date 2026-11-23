@@ -469,6 +469,9 @@ class Handler(BaseHTTPRequestHandler):
             op["by"] = dev["name"]  # linked devices are shown by name in the activity feed
             if dev.get("type") in REMOTE_ONLY and op.get("op") not in REMOTE_OPS:
                 return self._json({"ok": False, "error": "The phone is a remote control - edit presentations on the PC."}, 403)
+        if op.get("op") == "pointer":
+            store.pointer(op)
+            return self._json({"ok": True})
         if op.get("op") in ("show_on_pc", "open_on_pc", "close_on_pc"):
             # windows on the PC, asked for from the phone: presenter (borderless fullscreen), app window, close all
             hook = {"show_on_pc": ON_SHOW_PC, "open_on_pc": ON_OPEN_PC, "close_on_pc": ON_CLOSE_PC}[op["op"]]

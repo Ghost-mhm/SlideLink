@@ -142,6 +142,17 @@ public class MainActivity extends Activity {
             prefs.edit().putString("lang", lang).apply();
         }
         @JavascriptInterface public void setPresenting(boolean on) { ui.post(() -> applyPresenting(on)); }
+        /** Short vibration: a JSON list of milliseconds (buzz, pause, buzz, …), e.g. [25] or [40,60,40]. */
+        @JavascriptInterface public void vibrate(String pattern) {
+            try {
+                org.json.JSONArray a = new org.json.JSONArray(pattern);
+                long[] t = new long[a.length() + 1];             // the pattern starts with a pause: 0
+                for (int i = 0; i < a.length(); i++) t[i + 1] = Math.max(0, Math.min(500, a.getLong(i)));
+                android.os.Vibrator v = (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (v == null || !v.hasVibrator()) return;
+                v.vibrate(android.os.VibrationEffect.createWaveform(t, -1));
+            } catch (Exception ignored) { }
+        }
         /** The PC's current home-Wi-Fi addresses (they can change), used to switch to Wi-Fi automatically. */
         @JavascriptInterface public void setLanUrls(String urls) {
             prefs.edit().putString("lan", urls == null ? "" : urls.trim()).apply();
@@ -661,13 +672,27 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         int k = e.getKeyCode();
-        if ((k == KeyEvent.KEYCODE_VOLUME_DOWN || k == KeyEvent.KEYCODE_VOLUME_UP) && web.getVisibility() == View.VISIBLE) {
+        String id = null;
+        switch (k) {
+            // volume keys: + = forward, - = back (and the volume stays as it is)
+            case KeyEvent.KEYCODE_VOLUME_UP: id = "nextBtn"; break;
+            case KeyEvent.KEYCODE_VOLUME_DOWN: id = "prevBtn"; break;
+            // Bluetooth presentation clickers send these (arrow keys, space and B reach the page by themselves)
+            case KeyEvent.KEYCODE_PAGE_DOWN: case KeyEvent.KEYCODE_MEDIA_NEXT: case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                id = "nextBtn"; break;
+            case KeyEvent.KEYCODE_PAGE_UP: case KeyEvent.KEYCODE_MEDIA_PREVIOUS: case KeyEvent.KEYCODE_MEDIA_REWIND:
+                id = "prevBtn"; break;
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE: id = "blkBtn"; break;
+            default: break;
+        }
+        if (id != null && web.getVisibility() == View.VISIBLE) {
             if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
-                String id = k == KeyEvent.KEYCODE_VOLUME_UP ? "nextBtn" : "prevBtn";   // + = forward, - = back
                 web.evaluateJavascript("(function(){var b=document.getElementById('" + id + "');if(b&&!b.disabled)b.click();})()", null);
             }
-            return true;   // don't change the volume while presenting
+            return true;
         }
+        // other clicker keys (arrows, space, B) go to the page: make sure it has the keyboard focus
+        if (web.getVisibility() == View.VISIBLE && !web.hasFocus()) web.requestFocus();
         return super.dispatchKeyEvent(e);
     }
 
