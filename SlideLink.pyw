@@ -268,7 +268,12 @@ def show_presenter():
                    creationflags=NO_WINDOW, timeout=20)
     p = subprocess.Popen([exe, "--kiosk", f"{URL}/present", f"--user-data-dir={profile}", "--no-first-run",
                           "--no-default-browser-check", "--disable-session-crashed-bubble",
-                          "--autoplay-policy=no-user-gesture-required", "--disable-features=Translate"],
+                          "--autoplay-policy=no-user-gesture-required",
+                          # a window Chrome thinks is hidden stops painting and gets throttled: on a projector that
+                          # left the presentation black now and then, so never throttle this window
+                          "--disable-backgrounding-occluded-windows", "--disable-renderer-backgrounding",
+                          "--disable-background-timer-throttling",
+                          "--disable-features=Translate,CalculateNativeWinOcclusion"],
                          creationflags=NO_WINDOW)
     _procs["present"] = p
     threading.Thread(target=_front_when_ready, args=(p,), daemon=True).start()

@@ -1007,6 +1007,14 @@ function initPresent() {
   $('#fsBtn').onclick = e => { e.stopPropagation(); toggleFullscreen(); };
   $('#syncBtnP').onclick = e => { e.stopPropagation(); resync(true); };
   $('#exitBtn').onclick = e => { e.stopPropagation(); location.href = '/'; };
+  // back on screen (window was hidden, display switched): draw again and fetch the latest state
+  const heal = () => {
+    if (document.visibilityState !== 'visible' || !S) return;
+    if (slides().length && !document.querySelector('#frame .pslot.cur iframe, #frame .pslot.cur .docscroll')) resync(false);
+    else render();
+  };
+  document.addEventListener('visibilitychange', heal);
+  window.addEventListener('focus', heal);
   pres.addEventListener('click', e => {
     if (e.target.closest('.overlay')) return;
     go(e.clientX < innerWidth * 0.25 ? 'prev' : 'next');
@@ -1038,9 +1046,15 @@ function renderSlots(container, index, keepAround) {
       el.innerHTML = slideHTML(list[n], S.deck, n, true);
       container.appendChild(el);
       hsObserve(el);
+      // the frame's 'ready' can get lost (slow start, window in the background): treat it as ready after 2 s
+      const fr = el.querySelector('iframe');
+      if (fr) setTimeout(() => { if (!fr._ready && fr.isConnected) { fr._ready = true; postFrame(fr, { sl: 'step', step: el._step || 0, animate: false }); el._sent = el._step; } }, 2000);
       slots.set(key, el);
     }
     if (n === index) current = el;
+  }
+  if (!current && list.length) {   // index past the end (slides deleted meanwhile): show the last slide, never black
+    return renderSlots(container, list.length - 1, keepAround);
   }
   if (!list.length) { container.innerHTML = slideHTML(null, S.deck); container._slots = null; return; }
   // every loaded slide gets the build step it should show: current = live step, before = finished, after = start

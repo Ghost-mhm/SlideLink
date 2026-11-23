@@ -62,9 +62,6 @@ import java.util.Map;
 // The only screen of the app: WebView with the remote plus a native offline screen.
 public class MainActivity extends Activity {
     private static final int BG = Color.rgb(0x08, 0x09, 0x0c);   // near black: OLED pixels almost off (battery)
-    private static final long DIM_AFTER_MS = 20_000;     // no touch for 20 s while presenting: dim the screen
-    private boolean presenting, dimmed;
-    private final Runnable dim = () -> setBrightness(0.04f, true);
     private static final int ACCENT = Color.rgb(0x8b, 0x93, 0xff), ACCENT2 = Color.rgb(0x6f, 0x5c, 0xff);
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -137,7 +134,7 @@ public class MainActivity extends Activity {
                 findPc();
             });
         }
-        /** The page says whether a presentation is running: only then the screen stays on (and dims when idle). */
+        /** The page says whether a presentation is running: only then the screen stays on. */
         /** The admin's interface language (sent with every state): the app's own screens follow it. */
         @JavascriptInterface public void setLang(String lang) {
             if (lang == null || lang.equals(L.lang)) return;
@@ -657,39 +654,12 @@ public class MainActivity extends Activity {
 
     // Screen stays on only while presenting.
     private void applyPresenting(boolean on) {
-        presenting = on;
         if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        wake();
     }
 
-    /** Any touch or key: full brightness again, and dim again after 20 s without touching (only while presenting). */
-    // Any touch or key: full brightness; dim again after 20 s without touching while presenting.
-    private void wake() {
-        ui.removeCallbacks(dim);
-        if (dimmed) setBrightness(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE, false);
-        if (presenting) ui.postDelayed(dim, DIM_AFTER_MS);
-    }
-
-    // Sets this window's screen brightness (or back to the system value).
-    private void setBrightness(float value, boolean isDim) {
-        WindowManager.LayoutParams lp = getWindow().getAttributes();
-        lp.screenBrightness = value;
-        getWindow().setAttributes(lp);
-        dimmed = isDim;
-    }
-
-    // Every touch wakes the screen.
-    @Override
-    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
-        if (ev.getAction() == android.view.MotionEvent.ACTION_DOWN) wake();
-        return super.dispatchTouchEvent(ev);
-    }
-
-    // Volume + = Next, volume - = Back (the volume does not change).
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
-        if (e.getAction() == KeyEvent.ACTION_DOWN) wake();
         int k = e.getKeyCode();
         if ((k == KeyEvent.KEYCODE_VOLUME_DOWN || k == KeyEvent.KEYCODE_VOLUME_UP) && web.getVisibility() == View.VISIBLE) {
             if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
