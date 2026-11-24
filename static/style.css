@@ -591,6 +591,16 @@ body.is-remote .rm-chev { color: var(--rx-mut); }
 body.is-remote .rm-chev .ic { width: 18px; height: 18px; }
 body.is-remote .rm-timer { font: 600 16px ui-monospace, "Cascadia Mono", Consolas, monospace; font-variant-numeric: tabular-nums; padding: 0 14px; }
 body.is-remote .rm-top .rm-sync { width: 46px; padding: 0; display: grid; place-items: center; color: var(--rx-mut); }
+/* connection dot: green = home Wi-Fi, blue = relay, yellow = slow, red = no connection */
+.rm-net { display: flex; align-items: center; gap: 6px; padding: 0 10px; flex: none; font: 600 12px ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums; color: var(--rx-mut, #8a90a3); }
+.rm-net i { width: 10px; height: 10px; border-radius: 50%; background: #666; flex: none; transition: background .3s, box-shadow .3s; }
+.rm-net.wifi i { background: #2fd27a; box-shadow: 0 0 8px rgba(47,210,122,.6); }
+.rm-net.relay i { background: #4da3ff; box-shadow: 0 0 8px rgba(77,163,255,.6); }
+.rm-net.slow i { background: #ffc531; box-shadow: 0 0 8px rgba(255,197,49,.6); }
+.rm-net.off i { background: #ff4d4d; box-shadow: 0 0 8px rgba(255,77,77,.6); animation: netblink 1s steps(2) infinite; }
+@keyframes netblink { 50% { opacity: .3; } }
+@media (max-width: 360px) { .rm-net span { display: none; } }
 
 /* current slide */
 body.is-remote .rm-now { border-radius: 20px; box-shadow: 0 18px 50px -12px rgba(0,0,0,.7), 0 0 0 1px var(--rx-line); }

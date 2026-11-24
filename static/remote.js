@@ -34,6 +34,7 @@ function initRemote() {
       <button class="rm-deck" id="deckBtn" aria-label="Switch presentation">
         <span class="rm-deck-t" id="rTitle">…</span><span class="rm-chev">${IC('chev')}</span>
       </button>
+      <button class="rm-net" id="netDot" aria-label="Connection"><i></i><span id="netMs">…</span></button>
       <button class="rm-timer" id="timer" title="Tap: start / pause · hold: reset">00:00</button>
       <button class="rm-sync" id="syncBtn" aria-label="Resync all screens" title="Resync all screens">${IC('sync')}</button>
     </header>
@@ -150,6 +151,7 @@ function initRemote() {
     if (t - lastTap < 350) { lastTap = 0; go('blackout'); } else lastTap = t;
   });
   initLaser();
+  initNet();
   document.addEventListener('keydown', navKeys);   // Bluetooth clickers / keyboards
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tryWake(); });
   setInterval(() => { $('#timer').textContent = timerText(); S && renderClaudeBar(); }, 1000);
@@ -448,4 +450,49 @@ function lzSend(p) {
     }
     lzBusy = false;
   })();
+}
+
+/* Connection dot: which way the phone talks to the PC and how fast. Green = home Wi-Fi, blue = relay,
+   yellow = slow (over 400 ms), red = no connection. Tap it for the details. */
+let netMs = null, netFail = 0;
+// The way this page reaches the PC, from its own address.
+function netRoute() {
+  const h = location.hostname;
+  if (h.endsWith('.slidelink.invalid')) return { kind: 'relay', text: 'Over the internet (SlideLink Relay), end-to-end encrypted' };
+  if (/workers\.dev$|\/p\//.test(h + location.pathname)) return { kind: 'relay', text: 'Over the internet (SlideLink Relay)' };
+  if (h === 'localhost' || h === '127.0.0.1') return { kind: 'wifi', text: 'On this PC' };
+  return { kind: 'wifi', text: 'Same Wi-Fi as the PC, encrypted' };
+}
+// Measures the time for one small request every 5 s (only while the page is visible).
+async function netPing() {
+  if (document.hidden) return;
+  const t0 = performance.now();
+  try {
+    const r = await fetch('/api/whoami', { headers: authHeaders(), cache: 'no-store' });
+    if (!r.ok && r.status >= 500) throw new Error();
+    netMs = Math.round(performance.now() - t0); netFail = 0;
+  } catch (_) { netFail++; }
+  renderNet();
+}
+// Colours the dot.
+function renderNet() {
+  const d = $('#netDot');
+  if (!d) return;
+  const live = typeof lastBeat === 'number' && Date.now() - lastBeat < 15000;
+  const r = netRoute();
+  const state = netFail >= 2 || !live ? 'off' : netMs > 400 ? 'slow' : r.kind;
+  d.className = 'rm-net ' + state;
+  $('#netMs').textContent = state === 'off' ? '–' : netMs == null ? '…' : netMs + ' ms';
+}
+// Sets up the dot: first measurement now, then every 5 s; tap = details.
+function initNet() {
+  $('#netDot').onclick = () => {
+    const r = netRoute(), live = Date.now() - lastBeat < 15000;
+    if (!live || netFail >= 2) return toastOk('No connection to the PC right now. Trying again…');
+    toastOk('');                                     // same toast, but in parts so each part gets translated
+    $('#conn').innerHTML = `<span>${esc(r.text)}</span> · <span data-noi18n>${netMs} ms</span>${netMs > 400 ? ' · <span>slow</span>' : ''}`;
+  };
+  netPing();
+  setInterval(netPing, 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) netPing(); });
 }
