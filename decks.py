@@ -404,6 +404,16 @@ class Store:
                     self.log(by, f"marked {self._label(i)} as {fields['status']}", s["id"])
                 return {"slide_id": s["id"]}, True
 
+            if kind == "set_notes":
+                # speaker notes from a phone: the one thing a remote may change on a slide
+                i = self._index(op.get("id"))
+                s = slides[i]
+                s["notes"] = str(op.get("notes") or "")[:5000]
+                s["updated_at"] = time.time()
+                s["updated_by"] = by
+                self.log(by, f"edited the notes of {self._label(i)}", s["id"])
+                return {"slide_id": s["id"]}, True
+
             if kind == "delete_slide":
                 i = self._index(op.get("id"))
                 label = self._label(i)

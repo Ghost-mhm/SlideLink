@@ -55,7 +55,8 @@ function initRemote() {
     </div>
     <div class="rm-next">
       <div class="rm-nx"><div class="rm-lbl">Next</div><div id="nx"></div></div>
-      <div class="rm-notes" id="notes"></div>
+      <div class="rm-notes-wrap"><div class="rm-notes" id="notes"></div>
+        <button class="rm-notes-edit" id="notesEdit" aria-label="Edit notes">${IC('edit')}</button></div>
     </div>
     <div class="rm-actions">
       <button id="slidesBtn"><i>${IC('slides')}</i><span>Slides</span></button>
@@ -65,6 +66,8 @@ function initRemote() {
       <button id="liveBtnSheet" aria-label="Audience, polls, presenters"><i>${IC('live')}</i><span>Live</span></button>
       <button id="devBtn" aria-label="Linked devices"><i>${IC('devices')}</i><span>Devices</span></button>
     </div>
+    <button class="rm-go" id="goBtn" hidden><span class="rm-go-ic">${IC('play')}</span>
+      <span class="rm-go-t"><b>Start</b><small id="goDeck" data-noi18n></small></span></button>
     <div class="rm-pad">
       <button id="prevBtn" aria-label="Back">${IC('prev')}</button>
       <button id="blkBtn" class="rm-blk">${IC('blackout')}<small>Blackout</small></button>
@@ -152,6 +155,9 @@ function initRemote() {
   });
   initLaser();
   initNet();
+  $('#notesEdit').onclick = editNotes;
+  $('#goBtn').onclick = startTalk;
+  if (MODE === 'group') $('#notesEdit').hidden = true;   // co-presenters only read the notes
   document.addEventListener('keydown', navKeys);   // Bluetooth clickers / keyboards
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tryWake(); });
   setInterval(() => { $('#timer').textContent = timerText(); S && renderClaudeBar(); }, 1000);
@@ -161,6 +167,20 @@ function initRemote() {
    presentation open on the PC → "Close window on PC" (SlideLink keeps running, show it again any time). */
 let pcPending = null;   // {want: true|false, until} while the PC opens/closes the window
 // One button by state: show the presentation on the PC, or close its window.
+/* "Start": one tap in the room and the talk runs - back to slide 1, fullscreen on the projector, timer from 0:00.
+   Shown only while the presentation is not on the PC yet (pick another one under "Decks" first if needed). */
+async function startTalk() {
+  if (!S) return;
+  buzz(30);
+  if (slides().length && (S.present.index || S.present.step)) go('goto', { index: 0 });
+  timer.acc = 0; timer.run = true; timer.start = Date.now(); saveTimer();
+  $('#timer').textContent = timerText();
+  pcPending = { want: true, until: Date.now() + 12000 };
+  renderPcBtn();
+  const j = await api({ op: 'show_on_pc' });
+  if (j.ok) toastOk('Starting the presentation on the PC…');
+  else { pcPending = null; renderPcBtn(); }
+}
 async function showOnPC() {
   const pw = (S && S.pc_windows) || {};
   pcPending = { want: !pw.present, until: Date.now() + 12000 };
@@ -193,6 +213,11 @@ function renderPcBtn() {
   if (!b || !S) return;
   const open = !!(S.pc_windows || {}).present;
   if (pcPending && (open === pcPending.want || Date.now() > pcPending.until)) pcPending = null;
+  const g = $('#goBtn');                                  // "Start" only while nothing runs on the projector yet
+  if (g) {
+    g.hidden = open || !!pcPending || MODE === 'group' || !slides().length;
+    $('#goDeck').textContent = S.deck.title;
+  }
   const set = (icon, text, closing) => {
     const html = `<i>${icon}</i><span>${text}</span>`;
     if (b._h !== html) { b.innerHTML = html; b._h = html; }
@@ -495,4 +520,31 @@ function initNet() {
   netPing();
   setInterval(netPing, 5000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) netPing(); });
+}
+
+/* Editing the speaker notes on the phone (e.g. a last-minute fix before the talk). The editor keeps the slide it was
+   opened for, so moving on in the presentation meanwhile never saves the text to the wrong slide. */
+function editNotes() {
+  const list = slides(), i = S.present.index, s = list[i];
+  if (!s) return;
+  const back = document.createElement('div');
+  back.className = 'rm-notes-editor';
+  back.innerHTML = `<div class="rm-ne-in">
+    <div class="rm-ne-head"><b>Speaker notes</b><small data-noi18n>${esc(`${i + 1} / ${list.length} · ${s.title || ''}`)}</small></div>
+    <textarea id="neText" maxlength="5000" placeholder="What you want to say on this slide"></textarea>
+    <div class="rm-ne-row"><button id="neCancel">Cancel</button><button id="neSave" class="primary">Save</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  const ta = back.querySelector('#neText');
+  ta.value = s.notes || '';
+  ta.focus();
+  const close = () => back.remove();
+  back.querySelector('#neCancel').onclick = close;
+  back.querySelector('#neSave').onclick = async () => {
+    const b = back.querySelector('#neSave');
+    b.disabled = true;
+    const j = await api({ op: 'set_notes', id: s.id, notes: ta.value });
+    b.disabled = false;
+    if (j && j.ok) { close(); buzz(25); toastOk('Notes saved'); }
+  };
 }

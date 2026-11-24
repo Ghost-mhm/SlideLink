@@ -79,7 +79,7 @@ REMOTE_ONLY = {"phone", "tablet"}          # these devices control presentations
 REMOTE_OPS = {"next", "prev", "goto", "blackout", "open_deck", "show_on_pc", "open_on_pc", "close_on_pc", "resync",
               "poll_start", "poll_show", "poll_end", "poll_clear", "speaker_me", "speaker_set", "audience_new", "join_qr",
               "group_start", "group_end", "group_kick", "group_qr", "set_lang", "pointer",
-              "question_show", "question_dismiss", "questions_clear", "questions_open"}
+              "question_show", "question_dismiss", "questions_clear", "questions_open", "set_notes"}
 LANGS = ("en", "de")        # interface languages (static/i18n.js); the admin picks one for every screen
 # Group members (joined with the group link, not linked): control the talk only, never edit, switch decks or manage.
 GROUP_OPS = {"next", "prev", "goto", "blackout", "resync", "poll_start", "poll_show", "poll_end", "poll_clear",
