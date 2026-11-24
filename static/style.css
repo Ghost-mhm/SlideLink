@@ -789,3 +789,12 @@ body .hero-actions .play { background: linear-gradient(135deg, #8b93ff, #6f5cff)
 .rm-go-t { display: flex; flex-direction: column; min-width: 0; }
 .rm-go-t b { font-size: 18px; }
 .rm-go-t small { font-size: 12.5px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* "Start" asks first: the first slide, then Start / Cancel */
+.rm-go-confirm { position: fixed; inset: 0; z-index: 950; background: rgba(0,0,0,.65); display: flex; align-items: flex-end; }
+.rm-gc-in { width: 100%; background: var(--rx-card, #15161d); border-radius: 22px 22px 0 0; padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 8px; }
+.rm-gc-in > b { font-size: 18px; }
+.rm-gc-in > small { opacity: .65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rm-gc-slide { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; margin: 4px 0; }
+.rm-gc-slide .slide { position: absolute; inset: 0; height: 100%; }
+.rm-gc-in .muted { margin: 0 0 6px; font-size: 13px; }

@@ -156,7 +156,7 @@ function initRemote() {
   initLaser();
   initNet();
   $('#notesEdit').onclick = editNotes;
-  $('#goBtn').onclick = startTalk;
+  $('#goBtn').onclick = confirmStart;
   if (MODE === 'group') $('#notesEdit').hidden = true;   // co-presenters only read the notes
   document.addEventListener('keydown', navKeys);   // Bluetooth clickers / keyboards
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tryWake(); });
@@ -169,6 +169,26 @@ let pcPending = null;   // {want: true|false, until} while the PC opens/closes t
 // One button by state: show the presentation on the PC, or close its window.
 /* "Start": one tap in the room and the talk runs - back to slide 1, fullscreen on the projector, timer from 0:00.
    Shown only while the presentation is not on the PC yet (pick another one under "Decks" first if needed). */
+// First a check: the first slide of the presentation, and "Start" / "Cancel". Only "Start" really starts.
+function confirmStart() {
+  if (!S || !slides().length || document.querySelector('.rm-go-confirm')) return;
+  const first = slides()[0];
+  const back = document.createElement('div');
+  back.className = 'rm-go-confirm';
+  back.innerHTML = `<div class="rm-gc-in">
+    <b>Start this presentation?</b>
+    <small data-noi18n>${esc(S.deck.title)} · ${slides().length}</small>
+    <div class="rm-gc-slide">${slideHTML(first, S.deck, 0, false)}</div>
+    <p class="muted">It opens fullscreen on the PC at slide 1 and the timer starts.</p>
+    <div class="rm-ne-row"><button id="gcNo">Cancel</button><button id="gcYes" class="primary">Start</button></div>
+  </div>`;
+  document.body.appendChild(back);
+  hsObserve(back);
+  buzz(15);
+  back.querySelector('#gcNo').onclick = () => back.remove();
+  back.onclick = e => { if (e.target === back) back.remove(); };
+  back.querySelector('#gcYes').onclick = () => { back.remove(); startTalk(); };
+}
 async function startTalk() {
   if (!S) return;
   buzz(30);

@@ -49,6 +49,7 @@ const I18N_DICT = { de: {
   'Edit notes': 'Notizen bearbeiten', 'Speaker notes': 'Sprechernotizen', 'What you want to say on this slide': 'Was du auf dieser Folie sagen willst',
   'Notes saved': 'Notizen gespeichert',
   'Start': 'Los', 'Starting the presentation on the PC…': 'Präsentation startet auf dem PC…',
+  'Start this presentation?': 'Diese Präsentation starten?', 'It opens fullscreen on the PC at slide 1 and the timer starts.': 'Sie öffnet sich im Vollbild auf dem PC bei Folie 1, und der Timer startet.',
   'Point': 'Zeigen', 'Big slide: point at it with your finger, a red dot shows on the PC': 'Folie groß: mit dem Finger darauf zeigen, auf dem PC erscheint ein roter Punkt',
   'Write your text here.': 'Schreib hier deinen Text.', 'Speaker notes (shown on the phone remote)': 'Sprechernotizen (auf der Handy-Fernbedienung sichtbar)',
   'Slide HTML (designed slide, 1920×1080)': 'Folien-HTML (gestaltete Folie, 1920×1080)', 'No slides yet': 'Noch keine Folien', 'No slides': 'Keine Folien',
