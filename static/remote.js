@@ -418,7 +418,11 @@ function renderRemote() {
   const box = $('#nowSlide'), live = remoteLive || (s && s.layout === 'doc');
   if (box._mode !== (live ? 'live' : 'still')) { box.innerHTML = ''; box._h = null; box._slots = null; box._current = null; box._mode = live ? 'live' : 'still'; }
   if (live) renderSlots(box, i, 0);   // phone: only the current slide runs, at low fps
-  else setHTML(box, s ? `<div class="pslot cur">${slideHTML(s, S.deck, i)}</div>` : slideHTML(null, S.deck));
+  else {
+    // only rebuilt when the slide or the deck changes (a big slide's text is never compared on a mere click)
+    const k = (s ? s.id : '-') + ':' + i + ':' + S.deck_rev;
+    if (box._k !== k || box._h == null) { box._k = k; setHTML(box, s ? `<div class="pslot cur">${slideHTML(s, S.deck, i)}</div>` : slideHTML(null, S.deck)); }
+  }
   const lb = $('#liveBtn');
   lb.textContent = remoteLive ? 'Live' : 'Still';   // shows the current state; tap switches
   lb.classList.toggle('on', remoteLive);
@@ -426,7 +430,8 @@ function renderRemote() {
   presentingChanged();
   $('#nowBlk').classList.toggle('on', !!S.present.blackout);
   $('#blkBtn').classList.toggle('on', !!S.present.blackout);
-  setHTML($('#nx'), nx ? slideHTML(nx, S.deck, i + 1) : '<div class="rm-end">End of presentation</div>');
+  const nxEl = $('#nx'), nk = (nx ? nx.id : '-') + ':' + i + ':' + S.deck_rev;
+  if (nxEl._k !== nk) { nxEl._k = nk; setHTML(nxEl, nx ? slideHTML(nx, S.deck, i + 1) : '<div class="rm-end">End of presentation</div>'); }
   $('#notes').textContent = (s && s.notes) || 'No speaker notes for this slide.';
   $('#prevBtn').disabled = i <= 0 && step <= 0;
   const scrolls = s && (s.layout === 'page' || s.layout === 'doc');

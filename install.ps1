@@ -70,7 +70,7 @@ New-ItemProperty -Path $key -Name NoModify -Value 1 -PropertyType DWord -Force |
 New-ItemProperty -Path $key -Name NoRepair -Value 1 -PropertyType DWord -Force | Out-Null
 
 Write-Host "SlideLink installed to $dest"
-Write-Host "Shortcuts: Start menu and desktop."
+Write-Host ("Shortcuts: Start menu" + $(if ($NoDesktop) { " only." } else { " and desktop." }) + $(if ($Startup) { " Starts with Windows." } else { "" }))
 if (-not $NoLaunch) { Start-Process -FilePath $pyw -ArgumentList "`"$dest\SlideLink.pyw`"" -WorkingDirectory $dest }
 
 

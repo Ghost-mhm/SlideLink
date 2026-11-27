@@ -155,6 +155,7 @@ class Store:
     # Opens the last active deck.
     def __init__(self):
         self.lock = threading.RLock()
+        self._deck_saves = 0
         self.clients = {}   # client id -> {"role", "device", "q"}
         self.version = 0
         self.present = {"index": 0, "step": 0, "blackout": False, "changed_at": time.time()}
@@ -178,6 +179,13 @@ class Store:
     # Saves the open deck.
     def save(self):
         library.save(self.deck)
+        self._deck_saves += 1
+
+    # Version of the open deck's content. Screens get the (possibly huge) deck only when this changes,
+    # every click in between sends just the small state (position, poll, devices…).
+    def deck_rev(self):
+        d = self.deck
+        return f"{d.get('id')}:{id(d)}:{self._deck_saves}:{len(d.get('slides') or [])}:{d.get('updated_at')}"
 
     # Opens another deck on all screens, starting at slide 1.
     def open_deck(self, did):
@@ -257,29 +265,33 @@ class Store:
         return {"text": q["text"], "name": q["name"]} if q else None
 
     # The reduced state for the audience: slides without speaker notes, position, poll, speaker.
-    def public_snapshot(self):
+    def public_snapshot(self, with_deck=True):
         d = self.deck
-        slides = [{k: s.get(k) for k in ("id", "title", "layout", "html", "content")} for s in d["slides"]]
-        return {"deck": {"id": d["id"], "title": d["title"], "theme": d.get("theme"), "css": d.get("css", ""),
-                         "faces": d.get("faces", []), "slides": slides},
+        out = {"deck_rev": self.deck_rev()}
+        if with_deck:
+            slides = [{k: s.get(k) for k in ("id", "title", "layout", "html", "content")} for s in d["slides"]]
+            out["deck"] = {"id": d["id"], "title": d["title"], "theme": d.get("theme"), "css": d.get("css", ""),
+                           "faces": d.get("faces", []), "slides": slides}
+        return {**out,
                 "present": self.present, "poll": self.poll_public(), "speaker": self.speaker,
                 "question": self.question_shown(), "questions_open": self.questions_open,
                 "lang": library.meta.get("lang", "en"), "build": app_build(), "server_time": time.time()}
 
     # The state for group members: like the full state, but without linked devices and group admin data.
-    def member_snapshot(self):
-        s = self.snapshot()
+    def member_snapshot(self, with_deck=True):
+        s = self.snapshot(with_deck)
         g = self.group_active()
         s["linked"] = []
         s["group"] = {"active": bool(g), "member": True,
                       "names": [m["name"] for m in g["members"].values()] if g else []}
         return s
 
-    def snapshot(self):
+    def snapshot(self, with_deck=True):
         roles = {}
         for c in self.clients.values():
             roles[c["role"]] = roles.get(c["role"], 0) + 1
-        return {"version": self.version, "deck": self.deck, "present": self.present,
+        return {**({"deck": self.deck} if with_deck else {}), "deck_rev": self.deck_rev(),
+                "version": self.version, "present": self.present,
                 "activity": self.activity[:30], "claude": self.claude, "devices": roles,
                 "linked": registry.public(self.clients), "library_version": library.version,
                 "build": app_build(),
@@ -299,21 +311,25 @@ class Store:
     def publish(self, origin=None):
         with self.lock:
             self.version += 1
-            data = json.dumps({"type": "state", "origin": origin, "state": self.snapshot()},
-                              ensure_ascii=False)
-            public = member = None
+            rev = self.deck_rev()
+            made = {}
+
+            # each message is built at most once per publish; the deck goes only to screens that lack this version
+            def msg(kind, full):
+                if (kind, full) not in made:
+                    if kind == "audience":            # the audience gets the reduced state only
+                        body = {"type": "state", "state": self.public_snapshot(full)}
+                    elif kind == "member":            # group members: no device list, no group admin data
+                        body = {"type": "state", "origin": origin, "state": self.member_snapshot(full)}
+                    else:
+                        body = {"type": "state", "origin": origin, "state": self.snapshot(full)}
+                    made[(kind, full)] = json.dumps(body, ensure_ascii=False)
+                return made[(kind, full)]
+
             for c in list(self.clients.values()):
-                if c["role"] == "audience":           # the audience gets the reduced state only
-                    if public is None:
-                        public = json.dumps({"type": "state", "state": self.public_snapshot()}, ensure_ascii=False)
-                    c["q"].put(public)
-                elif str(c["device"]).startswith("g:"):   # group members: no device list, no group admin data
-                    if member is None:
-                        member = json.dumps({"type": "state", "origin": origin, "state": self.member_snapshot()},
-                                            ensure_ascii=False)
-                    c["q"].put(member)
-                else:
-                    c["q"].put(data)
+                kind = "audience" if c["role"] == "audience" else "member" if str(c["device"]).startswith("g:") else "full"
+                c["q"].put(msg(kind, c.get("deck_rev") != rev))
+                c["deck_rev"] = rev
 
     # Laser pointer from a phone: only the presentation windows get it, nothing is saved (fast, many per second).
     def pointer(self, op):

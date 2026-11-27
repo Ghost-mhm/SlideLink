@@ -524,7 +524,9 @@ class Handler(BaseHTTPRequestHandler):
             ip = self.client_address[0]
             via = ("pc" if dev is HOST else "e2e" if self._e2e_inner() else "relay" if self.headers.get("X-SlideLink-Relay")
                    else "internet" if ip in ("127.0.0.1", "::1", "::ffff:127.0.0.1") else "wifi")   # 127.0.0.1 + linked device = through a proxy
-            store.clients[cid] = {"role": role, "device": dev["id"], "q": q, "via": via, "client": client, "app": bool(appv)}
+            store.clients[cid] = {"role": role, "device": dev["id"], "q": q, "via": via, "client": client, "app": bool(appv),
+                                  # the screen says which deck version it already has (reconnect): not sent again
+                                  "deck_rev": (qs.get("rev") or [None])[0]}
             if appv and dev is not HOST and dev.get("app_version") != appv:
                 dev["app_version"] = appv
                 registry.save()

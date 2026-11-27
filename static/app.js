@@ -2,10 +2,12 @@
 'use strict';
 /* SlideLink client: library (/), editor (/edit), presenter (/present) and phone remote (/remote). */
 
-const MODE = location.pathname.startsWith('/present') ? 'present'
-  : location.pathname.startsWith('/remote') ? 'remote'
-  : location.pathname.startsWith('/group') ? 'group'
-  : location.pathname.startsWith('/edit') ? 'editor' : 'library';
+// through the relay the address starts with /p/<pc-id> (e.g. a group link /p/<id>/group?k=…): the page is what follows
+const PAGE_PATH = location.pathname.replace(/^\/p\/[a-zA-Z0-9]{6,40}(?=\/|$)/, '') || '/';
+const MODE = PAGE_PATH.startsWith('/present') ? 'present'
+  : PAGE_PATH.startsWith('/remote') ? 'remote'
+  : PAGE_PATH.startsWith('/group') ? 'group'
+  : PAGE_PATH.startsWith('/edit') ? 'editor' : 'library';
 const GROUP_KEY = 'slidelink-group';                 // {k, token, name} of a joined group session
 const groupLogin = () => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) || 'null'); } catch (_) { return null; } };
 const CLIENT = Math.random().toString(36).slice(2, 10);
@@ -93,10 +95,19 @@ function md(text) {
   return `<div class="col">${html}</div>`;
 }
 // HTML for one slide: designed slide or page in a frame, document view, or a basic layout.
+const frameCache = new WeakMap();   // slide -> its built frame (see slideHTML)
 function slideHTML(s, deck, index, live) {
   if (typeof deck === 'string' || !deck) deck = { theme: deck || 'midnight' };
   if (s && s.layout === 'doc') return hsDocView(s);
-  if (s && (s.layout === 'html' || s.layout === 'page')) return hsFrame(s, deck, index || 0, !!live);
+  if (s && (s.layout === 'html' || s.layout === 'page')) {
+    // a designed slide's frame is a big escaped document: build it once per slide (same deck, place and mode),
+    // not on every update; the same string also lets setHTML see "unchanged" at once
+    const c = frameCache.get(s);
+    if (c && c.deck === deck && c.index === (index || 0) && c.live === !!live && c.low === HS_LOWPOWER) return c.html;
+    const html = hsFrame(s, deck, index || 0, !!live);
+    frameCache.set(s, { deck, index: index || 0, live: !!live, low: HS_LOWPOWER, html });
+    return html;
+  }
   const t = esc(deck.theme || 'midnight');
   if (!s) return `<div class="slide theme-${t}"><div class="inner"><p class="s-empty">No slides yet</p></div></div>`;
   return `<div class="slide theme-${t} layout-${esc(s.layout)}"><div class="inner">` +
@@ -165,7 +176,8 @@ function connect() {
   clearTimeout(retryT);
   if (es) es.close();
   const appv = window.SlideLinkApp && SlideLinkApp.version ? '&appv=' + encodeURIComponent(SlideLinkApp.version()) : '';
-  es = new EventSource(`/events?role=${MODE === 'group' ? 'remote' : MODE}&client=${CLIENT}${appv}`);
+  const have = S && S.deck && S.deck_rev ? '&rev=' + encodeURIComponent(S.deck_rev) : '';   // reconnect: deck not sent again
+  es = new EventSource(`/events?role=${MODE === 'group' ? 'remote' : MODE}&client=${CLIENT}${appv}${have}`);
   lastBeat = Date.now();
   es.onopen = () => { retryDelay = 1000; sendLanToApp(); };
   es.onmessage = e => {
@@ -174,6 +186,9 @@ function connect() {
     if (m.type === 'pointer') return showLaser(m);
     if (m.type !== 'state') return;
     const prev = S;
+    // the deck comes only when it changed; small updates (every click) keep the one this screen already has
+    if (!m.state.deck && prev && prev.deck_rev === m.state.deck_rev) m.state.deck = prev.deck;
+    if (!m.state.deck) { resync(false); return; }    // should not happen: fetch the full state once
     S = m.state;
     I18N.fromServer(S.lang);            // the admin's language (or this guest's own choice)
     // SlideLink was updated on the PC: reload this window (it comes back at the same slide)
@@ -1024,7 +1039,7 @@ function initPresent() {
   // back on screen (window was hidden, display switched): draw again and fetch the latest state
   const heal = () => {
     if (document.visibilityState !== 'visible' || !S) return;
-    if (slides().length && !document.querySelector('#frame .pslot.cur iframe, #frame .pslot.cur .docscroll')) resync(false);
+    if (slides().length && !document.querySelector('#frame .pslot.cur')) resync(false);   // any slide type, not only frames
     else render();
   };
   document.addEventListener('visibilitychange', heal);
@@ -1039,8 +1054,13 @@ function initPresent() {
 // Short hash of a text (to notice changed slides).
 function strHash(t) { let h = 0; for (let k = 0; k < t.length; k++) h = (h * 31 + t.charCodeAt(k)) | 0; return h; }
 // Key of a loaded slide view (changes when the slide changes).
+// The hash of a slide's content is worked out once per slide object (big pages are megabytes; slides stay the
+// same objects until the deck really changes).
+const slideHashes = new WeakMap();
 function slotKey(s, n) {
-  return [s.id, n, S.deck.theme, strHash((S.deck.css || '') + (s.html || '') + s.title + s.content + s.layout)].join(':');
+  let h = slideHashes.get(s);
+  if (h === undefined) { h = strHash((s.html || '') + s.title + s.content + s.layout); slideHashes.set(s, h); }
+  return [s.id, n, S.deck.theme, strHash(S.deck.css || ''), h].join(':');
 }
 // Keeps the current slide (and neighbours) loaded and crossfades between them; sends build steps.
 function renderSlots(container, index, keepAround) {

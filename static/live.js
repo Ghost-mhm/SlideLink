@@ -16,8 +16,12 @@ const $ = s => document.querySelector(s);
 // Live connection: every message is the reduced public state.
 function connect() {
   if (es) es.close();
-  es = new EventSource(`/events?role=audience&k=${encodeURIComponent(KEY)}&client=${CLIENT}`);
-  es.onmessage = e => { fails = 0; const m = JSON.parse(e.data); if (m.type === 'state') { S = m.state; I18N.fromServer(S.lang); render(); } };
+  const have = S && S.deck && S.deck_rev ? '&rev=' + encodeURIComponent(S.deck_rev) : '';   // reconnect: deck not sent again
+  es = new EventSource(`/events?role=audience&k=${encodeURIComponent(KEY)}&client=${CLIENT}${have}`);
+  es.onmessage = e => { fails = 0; const m = JSON.parse(e.data); if (m.type === 'state') {
+    if (!m.state.deck && S && S.deck_rev === m.state.deck_rev) m.state.deck = S.deck;   // deck only sent when it changed
+    if (!m.state.deck) return;
+    S = m.state; I18N.fromServer(S.lang); render(); } };
   es.addEventListener('unlinked', () => { es.close(); message('This audience link was replaced. Ask the presenter for the new one.'); });
   es.onerror = () => {
     fails++;

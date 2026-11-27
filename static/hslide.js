@@ -168,7 +168,7 @@ const PAGE_BRIDGE = `(() => {
   let last = null;
   // Next/Back: first offered to the page as arrow keys (apps with their own navigation). If the page
   // doesn't react (nothing changes), it is a scrolling page: scroll one screen instead.
-  function key(k) {
+  function key(k, instant) {
     const code = k === 'ArrowRight' ? 39 : 37;
     let changed = false;
     const mo = new MutationObserver(() => { changed = true; });
@@ -185,7 +185,7 @@ const PAGE_BRIDGE = `(() => {
     setTimeout(() => {
       mo.disconnect();
       if (!handled && !changed && scrollY === y0) {
-        scrollBy({ top: (k === 'ArrowRight' ? 1 : -1) * innerHeight * 0.85, behavior: 'smooth' });
+        scrollBy({ top: (k === 'ArrowRight' ? 1 : -1) * innerHeight * 0.85, behavior: instant ? 'instant' : 'smooth' });
       }
     }, 150);
   }
@@ -193,7 +193,16 @@ const PAGE_BRIDGE = `(() => {
     const d = ev.data || {};
     if (d.sl !== 'step' && d.sl !== 'enter') return;
     const s = d.step || 0;
-    if (last === null || d.sl === 'enter') { last = s; return; }
+    if (last === null) {
+      // the page has just (re)loaded and starts at its beginning, but the talk is already further on
+      // (window opened mid-talk, Resync, update): fast-forward it to where everyone else is, instead of
+      // letting it jump back to the start at the next click
+      last = 0;
+      for (let n = 0; n < Math.min(s, 400); n++) key('ArrowRight', true);
+      last = s;
+      return;
+    }
+    if (d.sl === 'enter') { last = s; return; }
     while (last < s) { key('ArrowRight'); last++; }
     while (last > s) { key('ArrowLeft'); last--; }
   });
