@@ -2,7 +2,7 @@
 'use strict';
 /* SlideLink client: library (/), editor (/edit), presenter (/present) and phone remote (/remote). */
 
-// through the relay the address starts with /p/<pc-id> (e.g. a group link /p/<id>/group?k=…): the page is what follows
+// through the relay every address starts with /p/ plus the PC id (e.g. a group link): the page is what follows
 const PAGE_PATH = location.pathname.replace(/^\/p\/[a-zA-Z0-9]{6,40}(?=\/|$)/, '') || '/';
 const MODE = PAGE_PATH.startsWith('/present') ? 'present'
   : PAGE_PATH.startsWith('/remote') ? 'remote'
